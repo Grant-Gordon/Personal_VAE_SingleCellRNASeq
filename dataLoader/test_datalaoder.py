@@ -1,3 +1,13 @@
+"""
+test_dataloader
+Simple scrupt to test the functionality of the datalaoder 
+
+Modules: 
+    -SingelCellDataset: Custom pytorch Dataset class for loading sparse count/metadata
+    -collate_csr_tensor: custome collate_fn function for batching sparse CSR into tensors. **NOTE: This functions correctness has not been fully tested**
+
+"""
+
 from torch.utils.data import DataLoader
 from data_loader_class import SingleCellDataset
 from data_loader_class import collate_csr_tensors
@@ -16,6 +26,10 @@ print("creating mosue_loader")
 mosue_loader = DataLoader(mouse_dataset, batch_size=2, shuffle=True, collate_fn=collate_csr_tensors)
 
 def load_first_batch():
+    
+    """
+    Load and print first batch of humanDataset 
+    """
     for counts, metadata in human_loader:
         print("Counts Shape: ", counts.shape)
         print("Metadata: ", metadata)

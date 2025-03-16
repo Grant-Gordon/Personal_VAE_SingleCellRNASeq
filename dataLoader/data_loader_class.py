@@ -1,3 +1,14 @@
+"""
+Data_Loader_class
+
+This script provides functionality for loading in the July2024 census data fullset (human/mouse_counts_x.npz & huma/mouse_metadata_x.pkl). 
+Loads from sparse CSR formate into CSR tensor format 
+
+Methods: 
+    -collate_csr_tensor(batch): collates a batch of csr tensors and returns a single sparse CSR tensor representing the batch and a list of the metadata 
+
+"""
+
 import torch
 from torch.utils.data import Dataset
 import scipy.sparse as sp
@@ -8,16 +19,16 @@ import os
 def collate_csr_tensors(batch):
     """Collate a batch of sparse CSR tensors.
     Args:
-        batch: A list of sparse tensors or their components (crow_indices, col_indices, values).
+        batch(lsit): A list of tuples with sparse csr tensors and metadata 
     Returns:
-        A single sparse CSR tensor representing the batch.
+       tuple:  A single sparse CSR tensor representing the batch and a list of the metadata 
     """
     crow_indices_list = []
     col_indices_list = []
     values_list=[]
     metadata_batch = []
 
-    #track row offset when stacking mustile csr matrices 
+    #track row offset when stacking multiple  csr matrices 
     row_offset = 0
 
     for counts, metadata in batch:
@@ -31,7 +42,7 @@ def collate_csr_tensors(batch):
 
 
         #add components to the batch
-        crow_indices_list.append(adjuscted_crow[:-1]) # drop last index to avoid overlap 
+        crow_indices_list.append(adjuscted_crow[:-1]) # drop last index to avoid overlap, see python-list-slicing 
         col_indices_list.append(col_indices)
         values_list.append(values)
 
@@ -50,7 +61,18 @@ def collate_csr_tensors(batch):
     batch_csr_tensor = torch.sparse_csr_tensor(crow_indices, col_indices, values, size = (row_offset, counts.shape[1]))
     return batch_csr_tensor, metadata_batch
 
-class SingleCellDataset(Dataset):
+class SingleCellDataset(Dataset):    
+    """
+    Custom Pytorch Dataset for july2024_census_data/full 
+
+    Args: 
+        data_dir (str): Path to data directory
+        species(str): Either "human" or mouse". NOTE future implementation of multispcies handling  will be needed
+
+    Methods: 
+        __len__: Returns number of files in Dataset
+        __getitem__: Loads a sparce count matrix and metadata for a given index
+    """
     #@TODO add num files counter? 
     def __init__(self,data_dir, species="human"):
         self.data_dir = data_dir
