@@ -30,14 +30,15 @@ def collate_csr_tensors(batch):
 
     #track row offset when stacking multiple  csr matrices 
     row_offset = 0
-
+    num_cols = batch[0][0].shape[1] # number of columns in matrix
+    
     for counts, metadata in batch:
         #unpack csr tensor components 
         crow_indices = counts.crow_indices().cpu()
         col_indices = counts.col_indices().cpu()
         values = counts.values().cpu()
 
-        #adjust crow_indeces for batch offset
+        #adjust crow_indices for batch offset
         adjuscted_crow = crow_indices + row_offset
 
 
@@ -46,8 +47,8 @@ def collate_csr_tensors(batch):
         col_indices_list.append(col_indices)
         values_list.append(values)
 
-        #add final row pointer offset 
-        row_offset += counts.shape[0]
+        #add 1 row  
+        row_offset += 1
 
         #store metadata
         metadata_batch.append(metadata)
@@ -58,7 +59,8 @@ def collate_csr_tensors(batch):
     values = torch.cat(values_list)
 
     #create batch csr tensor
-    batch_csr_tensor = torch.sparse_csr_tensor(crow_indices, col_indices, values, size = (row_offset, counts.shape[1]))
+    batch_csr_tensor = torch.sparse_csr_tensor(crow_indices, col_indices, values, size = (row_offset, num_cols))
+   
     return batch_csr_tensor, metadata_batch
 
 class SingleCellDataset(Dataset):    
@@ -70,8 +72,16 @@ class SingleCellDataset(Dataset):
         species(str): Either "human" or mouse". NOTE future implementation of multispcies handling  will be needed
 
     Methods: 
-        __len__: Returns number of files in Dataset
-        __getitem__: Loads a sparce count matrix and metadata for a given index
+        __len__: Returns number of total samples in the Dataset i.e. summed row count of all npz files in Dataset
+        __getitem__: Retunrns tuple (sample_as_csr_row_tensor, metadata_row(pandas-df)). Returns a the (counts,metadata) of a sample[idx] where 0 < idx < __len__()
+    
+    Attributes:
+        data_dir(string): path to full dataset e.g "../../../july2024_census/full/"
+        species(string): species of the dataSet. currently only supports "human", "mouse"
+        count_files(string[]): list contains name of all count npz files for the species
+        metadata_files(string[]): list containing name of all metadata.pkl files for the speceis
+        file_row_offset( (string, int): tuple containing the list of count.npz files and the row offset the csr matrix starts at
+        total_rows(int): the total number of samples in the entire dataset i.e. summed row count of all npz files in the Dataset
     """
     #@TODO add num files counter? 
     def __init__(self,data_dir, species="human"):
@@ -82,39 +92,65 @@ class SingleCellDataset(Dataset):
         print("counting count/metadata files...")
         self.count_files = sorted([f for f in os.listdir(data_dir) if f.startswith(f"{species}_counts_")])
         self.metadata_files = sorted([f for f in os.listdir(data_dir) if f.startswith(f"{species}_metadata_")])
-        print(f"count file: {len(self.count_files)}, metadataFiles: {len(self.metadata_files)}")
+        print(f"count file: {len(self.count_files)}, metadataFiles: {len(self.metadata_files)}\n\n")
 
         #Error checking
-        assert len(self.count_files)  == len(self.metadata_files)
+        assert len(self.count_files)  == len(self.metadata_files), "Assert Error: Mismatch between Count and metadata files!"
+
+        #Get row count from metadata (should be same as npz thus cheaper. 120 .pkl * 50 MB = ~6GB laoded in and out)
+        self.file_row_offsets = []
+        total_rows = 0
+
+        for meta_file in self.metadata_files:
+            meta_path = os.path.join(data_dir, meta_file)
+            print("Opening: ", meta_file)
+            with open(meta_path, "rb") as f:
+                matrix_metadata = pickle.load(f)
+            num_rows = matrix_metadata.shape[0]
+            corresponding_counts_file = meta_file.replace('metadata', 'counts')
+            corresponding_counts_file = corresponding_counts_file.replace('.pkl','.npz')
+            self.file_row_offsets.append((corresponding_counts_file, total_rows))
+            print(f"({corresponding_counts_file}, {total_rows}) Appended to self.file_row_offsets")
+            total_rows += num_rows
+        self.total_rows = total_rows
+        print(f"\nTotal_rows: \t{self.total_rows}")
 
     def __len__(self):
-        return len(self.count_files)
+        return self.total_rows
     
     def __getitem__(self, idx):
-        print(f"in __getitem__ at idx: {idx}")
-        #load sparse matrix
-        #TODO Confirm july2024_censusdata/name/of/files
-        count_path= os.path.join(self.data_dir,self.count_files[idx])
-        metadata_path= os.path.join(self.data_dir, self.metadata_files[idx])
+    
+        #Find file with requested index
+        file_idx = next(i for i, (_, start_row) in enumerate(self.file_row_offsets) if start_row > idx) -1
+        file_name, start_row = self.file_row_offsets[file_idx]
 
-        print("loading counts_as_sparse_matrix")
-        counts_as_scipy_csr = sp.load_npz(count_path) #load sparse matrix 
-        print("loaded npz as sparse matrix ")
-        
-        print("loading counts_as_csr_tensor")
-        counts_as_csr_tensor = torch.sparse_csr_tensor(
-            torch.tensor(counts_as_scipy_csr.indptr),
-            torch.tensor(counts_as_scipy_csr.indices),
-            torch.tensor(counts_as_scipy_csr.data),
-            size=counts_as_scipy_csr.shape
+        count_path = os.path.join(self.data_dir, file_name)
+        metadata_path = os.path.join(self.data_dir, self.metadata_files[file_idx])
+
+
+        #Only npz containing file
+        count_as_scipy_csr=sp.load_npz(count_path)
+        row_idx = idx - start_row #local row index within file
+        single_row_csr = count_as_scipy_csr.getrow(row_idx)
+        print(f"Sample {row_idx} fetched from {count_path} as \n\t{single_row_csr}")
+
+        #convert row to sparse tensor
+        sample_as_csr_row_tensor = torch.sparse_csr_tensor(
+            torch.tensor(single_row_csr.indptr),
+            torch.tensor(single_row_csr.indices),
+            torch.tensor(single_row_csr.data),
+            size = single_row_csr.shape
         )
-        print("loaded sparse matrix into csr tensor")
-        print(counts_as_csr_tensor)
+        #TODO fix [romnt statement
+        print(f"converted sample to csr_row_tensor with size:\t{sample_as_csr_row_tensor.size()}")
 
-        # load Metadata
-        print("opening metadata (.pkl)")
+
+        #TODO load corresp row not full matrix??
+        #Load corresponding metadata row into tensor
         with open(metadata_path, 'rb') as f:
             metadata = pickle.load(f)
+        metadata_row = metadata.iloc[row_idx]
         
-        print("retuning")
-        return counts_as_csr_tensor, metadata
+        print(f"loaded {metadata_path} and fetched sample at {row_idx}")
+
+        return sample_as_csr_row_tensor, metadata_row
