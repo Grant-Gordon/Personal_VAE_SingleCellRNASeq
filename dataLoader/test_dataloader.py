@@ -21,15 +21,16 @@ print("creating mouse_dataset")
 mouse_dataset = SingleCellDataset(data_dir, species="mouse")
 
 print("creating human_loader")
-human_loader = DataLoader(human_dataset, batch_size=2, shuffle=True, collate_fn=collate_csr_tensors)
+human_loader = DataLoader(human_dataset, batch_size=5, shuffle=True, collate_fn=collate_csr_tensors)
 print("creating mosue_loader")
-mosue_loader = DataLoader(mouse_dataset, batch_size=2, shuffle=True, collate_fn=collate_csr_tensors)
+mouse_loader = DataLoader(mouse_dataset, batch_size=5, shuffle=True, collate_fn=collate_csr_tensors)
 
 def load_first_batch():
     
     """
     Load and print first batch of humanDataset 
     """
+    print("Called load_first_batch()")
     for counts, metadata in human_loader:
         print("Counts Shape: ", counts.shape)
         print("Metadata: ", metadata)
