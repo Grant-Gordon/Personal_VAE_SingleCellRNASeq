@@ -9,7 +9,7 @@ from DAE.dae import DeepAutoEncoder
 
 def main():
     #Initialize dataset and DataLaoder
-    data_dir = '../../../july2024_census_data/full/'#TODO set up arguments to pass directly? 
+    data_dir = '../../july2024_census_data/full/'#TODO set up arguments to pass directly?, imagine from parent dir??
 
 
     print("creating human_dataset")
