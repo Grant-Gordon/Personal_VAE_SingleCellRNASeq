@@ -83,7 +83,6 @@ class SingleCellDataset(Dataset):
         file_row_offset( (string, int): tuple containing the list of count.npz files and the row offset the csr matrix starts at
         total_rows(int): the total number of samples in the entire dataset i.e. summed row count of all npz files in the Dataset
     """
-    #@TODO add num files counter? 
     def __init__(self,data_dir, species="human"):
         self.data_dir = data_dir
         self.species = species
@@ -107,8 +106,8 @@ class SingleCellDataset(Dataset):
             with open(meta_path, "rb") as f:
                 matrix_metadata = pickle.load(f)
             num_rows = matrix_metadata.shape[0]
-            corresponding_counts_file = meta_file.replace('metadata', 'counts')
-            corresponding_counts_file = corresponding_counts_file.replace('.pkl','.npz')
+            corresponding_counts_file = meta_file.replace('metadata', 'counts')             #human_metadata_x.pkl -> human_counts_x.pkl
+            corresponding_counts_file = corresponding_counts_file.replace('.pkl','.npz')    #human_counts_x.pkl -> human_counts_x.npz == corresponding count-metadata file
             self.file_row_offsets.append((corresponding_counts_file, total_rows))
             print(f"({corresponding_counts_file}, {total_rows}) Appended to self.file_row_offsets")
             total_rows += num_rows
@@ -120,7 +119,7 @@ class SingleCellDataset(Dataset):
     
     def __getitem__(self, idx):
     
-        #Find file with requested index
+        #Find file with requested index (out of whole dataset)
         file_idx = next(i for i, (_, start_row) in enumerate(self.file_row_offsets) if start_row > idx) -1
         file_name, start_row = self.file_row_offsets[file_idx]
 
