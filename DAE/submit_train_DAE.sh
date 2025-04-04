@@ -11,7 +11,7 @@ DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/full"
 OUTPUT_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/JobOutputs"
 
 EPOCHS=1
-BATCH_SIZE=3
+BATCH_SIZE=128
 SPECIES="human"
 
 cd "$WORKING_DIR" || exit 1

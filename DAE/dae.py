@@ -22,6 +22,6 @@ class DeepAutoEncoder(nn.Module):
 
     def forward(self,x):
         encoded = self.encoder(x)
-        decoded= self.decover(encoded)
+        decoded= self.decoder(encoded)
         return decoded
 

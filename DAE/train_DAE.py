@@ -28,10 +28,10 @@ def main():
     batch_size = args.batch_size
     lr = args.lr
     output_dir = args.output_dir
-    target_species = args.species
+    species = args.species
 
     # Initialize dataset
-    chunks_dataset = ChunksDataset(data_dir_path=data_dir, target_species=target_species)
+    chunks_dataset = ChunksDataset(data_dir_path=data_dir, target_species=species)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") #TODO is esle neccessary? dont want to run on cpu anyway 
 
@@ -79,7 +79,7 @@ def main():
                 loss.backward()
                 optimizer.step()
                 
-                batch_train_time = time.time() = batch_start_time
+                batch_train_time = time.time() - batch_start_time
 
                 csv_writer.writerow([
                     epoch,chunk_idx,

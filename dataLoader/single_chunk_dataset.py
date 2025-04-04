@@ -11,8 +11,8 @@ import random
 class ChunksDataset:
     def __init__(self, data_dir_path, target_species = "human"):
         self.data_dir_path = data_dir_path
-        self.shuffled_chunk_list = self._get_shuffled_chunk_list()
         self.target_species = target_species
+        self.shuffled_chunk_list = self._get_shuffled_chunk_list()
         self.current_chunk_idx = -1 
 
     #returns a shuffled list of tuples(count, metadata) file names
@@ -22,8 +22,8 @@ class ChunksDataset:
         files = set(os.listdir(self.data_dir_path))
 
         for file in files:
-            if file.startswith(f"count_{self.target_species}_"):
-                metadata_file = file.replace("count", "metadata")
+            if file.startswith(f"{self.target_species}_counts"):
+                metadata_file = file.replace("counts", "metadata")
                 metadata_file = metadata_file.replace("npz", "pkl")
                 if metadata_file in files: 
                     chunk_list.append((file,metadata_file))
@@ -54,8 +54,8 @@ class SingleChunkDataset(Dataset):
 
 
     def __getitem__(self, index):
-        return torch.tensor(self.counts_csr[index].toarray(), dtype=torch.float32)  # Convert row to dense
+        return torch.tensor(self.counts_csr[index].toarray().flatten(), dtype=torch.float32)  # Convert row to dense
     
 
     def __len__(self):
-        self.samples_in_chunk
+        return self.samples_in_chunk
