@@ -9,6 +9,7 @@ import time
 import csv
 import threading
 from queue import Queue
+import numpy as np
 
 from dataLoader.single_chunk_dataset import SingleChunkDataset, ChunksDataset
 from DAE.dae import DeepAutoEncoder
@@ -43,6 +44,7 @@ def main():
     parser.add_argument("--num_preloader_threads", type=int, default=1, help="The number of threads that will be attemping to preload chunks into RAM:")
     args = parser.parse_args()
    
+   #instantiate args
     data_dir = args.data_dir
     epochs = args.epochs
     batch_size = args.batch_size
@@ -53,6 +55,7 @@ def main():
     num_preloader_threads = args.num_preloader_threads
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") #TODO is esle neccessary? dont want to run on cpu anyway 
+   
     # Initialize dataset
     chunks_dataset = ChunksDataset(data_dir_path=data_dir, target_species=species)
 
@@ -67,17 +70,22 @@ def main():
 
 
     #prepare logging
-    writer = SummaryWriter(log_dir=os.path.join(output_dir, "tensorboard_logs"))
+    tensorboard_writer = SummaryWriter(log_dir=os.path.join(output_dir, "tensorboard_logs"))
     timing_log_path = os.path.join(output_dir, "dataloader_timing_log.csv")
-    log_file = open(timing_log_path, 'w', newline="")
-    csv_writer = csv.writer(log_file)
+    chunks_log_file = open(timing_log_path, 'w', newline="")
+    csv_writer = csv.writer(chunks_log_file)
     csv_writer.writerow([
         "epoch",
-        "chunk",
-        "batch",
+        "chunk_idx",
         "chunk_load_time",
-        "batch_creation_time" 
-        "batch_train_time"])
+        "chunk_train_time",
+        "chunk_loss",
+        "avg_batch_train_time",
+        "max_batch_train_time",
+        "min_batch_train_time",
+        "avg_batch_creation_time"
+    
+    ])
 
     #prepare for multithreaded pre-loading of chunks
     preload_queue = Queue(maxsize=chunks_preloaded)
@@ -111,54 +119,109 @@ def main():
     for epoch in range(epochs):
         epoch_start_time = time.time()
 
-        epoch_loss = 0.0
-        num_batches = 0
+        epoch_total_loss = 0.0
+        num_batches_in_epoch = 0
+        chunk_load_times=[]
 
         for chunk_idx in range(len(chunks_dataset)):
+            chunk_train_time_start = time.time()
             loaded_chunk_idx, current_loader, chunk_load_time = preload_queue.get()
+            chunk_load_times.append(chunk_load_time)
 
             assert loaded_chunk_idx == chunk_idx,  f"Expected chunk {chunk_idx}, got {loaded_chunk_idx}"
 
+            #chunk's batches logging vars
+            batch_train_times = []
+            batch_creation_times = []
+            chunk_total_loss = 0.0
+            num_batches_in_chunk=0
 
             #Training step 
+            batch_creation_start_time = time.time()
             for batch_idx, batch in enumerate(current_loader):
-                batch_creation_start_time = time.time()
-                batch = batch.to(device)
                 batch_creation_time  = time.time() - batch_creation_start_time
+                batch = batch.to(device)
 
                 batch_start_time = time.time()
                 optimizer.zero_grad()
                 outputs = model(batch)
-                loss = criterion(outputs, batch)
-                loss.backward()
+                batch_loss = criterion(outputs, batch)
+                batch_loss.backward()
                 optimizer.step()
                 batch_train_time = time.time() - batch_start_time
 
-                csv_writer.writerow([
-                    epoch,
-                    chunk_idx,
-                    batch_idx,
-                    f"{chunk_load_time:.6f}",  
-                    f"{batch_creation_time:.6f}",
-                    f"{batch_train_time}"
-                    ])
+                #summate batch metrics
+                chunk_total_loss += batch_loss.item()
+                batch_train_times.append(batch_train_time)
+                batch_creation_times.append(batch_creation_time)
+                num_batches_in_chunk +=1
+                batch_creation_start_time = time.time()
 
-                epoch_loss += loss.item()
-                num_batches += 1  # Track number of batches for averaging
-            preload_queue.task_done() #optional???
+            #chunk stats
+            chunk_train_time = time.time() - chunk_train_time_start
+            avg_batch_train_time = np.mean(batch_train_times)
+            max_batch_train_time = np.max(batch_train_times)
+            min_batch_train_time = np.min(batch_train_times)
+            avg_batch_creation_time = np.mean(batch_creation_times)
+            chunk_avg_loss = chunk_total_loss / num_batches_in_chunk
 
-        avg_loss = epoch_loss / num_batches if num_batches > 0 else float("inf")
-        writer.add_scalar("Loss/train", avg_loss, epoch)
+            csv_writer.writerow([
+                epoch,
+                chunk_idx,
+                chunk_load_time,
+                chunk_train_time,
+                chunk_avg_loss,
+                avg_batch_train_time,
+                max_batch_train_time,
+                min_batch_train_time,
+                avg_batch_creation_time
+               
+            ])
+
+            tensorboard_writer.add_scalars(f"ChunkStats/Epoch_{epoch}", {
+                "ChunkLoss": chunk_avg_loss,
+                "AvgBatchTrainTime": avg_batch_train_time,
+                "AvgBatchCreationTime": avg_batch_creation_time,
+            }, global_step=chunk_idx + epoch * len(chunks_dataset))
+
+
+            epoch_loss += chunk_total_loss
+            num_batches_in_epoch += num_batches_in_chunk
+
+            preload_queue.task_done() #TODO optional???
+
+        #epoch stats
         epoch_time = time.time() - epoch_start_time
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}, Epoch Time: {epoch_time:.2f}s")
+        epoch_avg_loss = epoch_total_loss / num_batches_in_epoch
+        
+        #Tensorboard Epoch Summary
+        tensorboard_writer.add_scalars("EpochSummary", {
+            "EpochLoss": epoch_avg_loss,
+            "EpochTime": epoch_time,
+            "MinChunkLoadTime": min(chunk_load_times),
+            "MaxChunkLoadTime": max(chunk_load_times),
+            "AvgChunkLoadTime": sum(chunk_load_times) / len(chunk_load_times),
+        }, epoch)
+        tensorboard_writer.add_histogram("BatchTrainTimes", torch.tensor(batch_train_times), epoch)
+        tensorboard_writer.add_histogram("LastChunk/BatchCreationTimes", torch.tensor(batch_creation_times), epoch)
+
+        # TensorBoard: text summary (replaces print)
+        summary_text = (
+            f"Epoch {epoch+1}/{epochs}\n"
+            f"Avg Epoch Loss: {epoch_avg_loss:.6f}\n"
+            f"Epoch Time: {epoch_time:.2f}s\n"
+            f"Chunk Load Times: min={min(chunk_load_times):.3f}s, "
+            f"max={max(chunk_load_times):.3f}s, avg={sum(chunk_load_times)/len(chunk_load_times):.3f}s\n"
+        )
+        tensorboard_writer.add_text("EpochLogs", summary_text, epoch)
 
     # Save the model
     model_save_path = os.path.join(output_dir, "dae_model.pth")
     torch.save(model.state_dict(), model_save_path)
     print(f"Model saved to {model_save_path}")
 
-    writer.close()
-    log_file.close()
+    tensorboard_writer.close()
+    chunks_log_file.close()
 
 if __name__ == "__main__":
     main()
