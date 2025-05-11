@@ -6,9 +6,9 @@ import numpy as np
 import os
 import random 
 
-
-
 class ChunksDataset:
+#TODO Add Warning about hardcoding for structure of files in data_dir_path 
+
     def __init__(self, data_dir_path, target_species = "human"):
         self.data_dir_path = data_dir_path
         self.target_species = target_species
@@ -37,7 +37,7 @@ class ChunksDataset:
         return len(self.shuffled_chunk_list)
 
 
-
+#NOTE __getitem__ only returns sample from counts. Metadata is laoded but Not used at all
 class SingleChunkDataset(Dataset):
     
     def __init__(self, counts_path, metadata_path):
