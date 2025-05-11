@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=Train_DAE_sub_updated_logs
+#SBATCH --job-name=Train_DAE_2gpu
 #SBATCH --output=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/JobOutputs/Job_%j-%x/%x.out
 #SBATCH --error=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/JobOutputs/Job_%j-%x/%x.err
 #SBATCH --time=8:00:00
 #SBATCH --gpus-per-node=2
-#SBATCH --mem=32G
+#SBATCH --mem-per-gpu=32G
 
 #Define environment variables 
 PROJECT_ROOT_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq"

@@ -185,7 +185,7 @@ def main():
             }, global_step=chunk_idx + epoch * len(chunks_dataset))
 
 
-            epoch_loss += chunk_total_loss
+            epoch_total_loss += chunk_total_loss
             num_batches_in_epoch += num_batches_in_chunk
 
             preload_queue.task_done() #TODO optional???
