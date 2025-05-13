@@ -17,14 +17,14 @@ class VaritationalAutoEncoder(nn.Module):
   
     
     def encode(self, x):
-        h = self.relu(self.encoder_fc1(x))
+        h = nn.functional.relu(self.encoder_fc1(x))
         mu = self.mu_layer(h)
         logvar = self.logvar_layer(h)
         return mu, logvar
     
     def decode(self, z):
-        h = self.relu(self.decoder_fc1(z))
-        out = self.relu(self.decoder_out(h))
+        h = nn.functional.relu(self.decoder_fc1(z))
+        out = nn.functional.relu(self.decoder_out(h))
         return out
 
 
@@ -41,7 +41,7 @@ class VaritationalAutoEncoder(nn.Module):
         reconstructed = self.decode(z)
         return reconstructed, mu, logvar
 
-       
+    @staticmethod
     def vae_loss(reconstructed, original, mu, logvar):
         reconstructed_loss = nn.functional.mse_loss(reconstructed, original, reduction='sum') # or reduction = mean
         kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
