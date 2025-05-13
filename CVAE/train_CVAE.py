@@ -94,11 +94,8 @@ def main():
     chunk_queue= Queue()
     def preload_worker():
         while True:
-            try:
-                chunk_idx = chunk_queue.get(timeout=3) #Wait up to 3 seconds for work
-            except:
-                break # exit thread if no more work 
-            
+            chunk_idx = chunk_queue.get() #Wait up to 3 seconds for work
+
             chunk_start_time = time.time()
             counts_file, metadata_file = chunks_dataset[chunk_idx]
             dataloader = create_dataloader(data_dir=data_dir, counts_file=counts_file, metadata_file=metadata_file, batch_size=batch_size)
@@ -106,10 +103,6 @@ def main():
             
             preload_queue.put((chunk_idx, dataloader, chunk_load_time)) # blocks if Q full 
             chunk_queue.task_done()
-
-    #populate Q with chunks
-    for i in range(len(chunks_dataset)):
-        chunk_queue.put(i)
 
     for _ in range(num_preloader_threads):
         t = threading.Thread(target= preload_worker)
@@ -122,6 +115,10 @@ def main():
     print(f"Time until First Epoch reached: {time.time() - main_start_time:.2f}s")
     for epoch in range(epochs):
         epoch_start_time = time.time()
+
+        #populate Q with chunks
+        for i in range(len(chunks_dataset)):
+            chunk_queue.put(i)
 
         epoch_total_loss = 0.0
         epoch_total_kl_loss = 0.0
@@ -202,8 +199,6 @@ def main():
 
             epoch_total_loss += chunk_total_loss
             num_batches_in_epoch += num_batches_in_chunk
-
-            preload_queue.task_done() #TODO optional???
 
         #epoch stats
         epoch_time = time.time() - epoch_start_time
