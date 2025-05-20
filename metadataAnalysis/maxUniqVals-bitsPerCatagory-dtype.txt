@@ -1,0 +1,63 @@
+                                       Field  Max Unique Values  \
+0                                      assay                 24   
+1                     assay_ontology_term_id                 24   
+2                                  cell_type                656   
+3                 cell_type_ontology_term_id                656   
+4                                 dataset_id                368   
+5                                  dev_stage                  7   
+6                          development_stage                176   
+7         development_stage_ontology_term_id                176   
+8                                    disease                108   
+9                   disease_ontology_term_id                108   
+10                                  donor_id               5966   
+11                           is_primary_data                  1   
+12                           n_measured_vars                363   
+13                                       nnz              11076   
+14                        observation_joinid             499968   
+15                              raw_mean_nnz             433387   
+16                                   raw_sum              47304   
+17                          raw_variance_nnz             499936   
+18                   self_reported_ethnicity                 31   
+19  self_reported_ethnicity_ontology_term_id                 31   
+20                                       sex                  3   
+21                      sex_ontology_term_id                  3   
+22                               soma_joinid             499968   
+23                           suspension_type                  2   
+24                                    tissue                264   
+25                            tissue_general                 55   
+26           tissue_general_ontology_term_id                 55   
+27                   tissue_ontology_term_id                264   
+28                               tissue_type                  1   
+
+    Bits Required (log2)            Source File Data Type  
+0                      5  human_metadata_70.pkl  category  
+1                      5  human_metadata_70.pkl  category  
+2                     10  human_metadata_77.pkl  category  
+3                     10  human_metadata_77.pkl  category  
+4                      9  human_metadata_67.pkl  category  
+5                      3  human_metadata_70.pkl    object  
+6                      8  human_metadata_70.pkl  category  
+7                      8  human_metadata_70.pkl  category  
+8                      7  human_metadata_77.pkl  category  
+9                      7  human_metadata_77.pkl  category  
+10                    13  human_metadata_81.pkl  category  
+11                     0  human_metadata_70.pkl      bool  
+12                     9  human_metadata_67.pkl     int64  
+13                    14  human_metadata_63.pkl     int64  
+14                    19  mouse_metadata_12.pkl    object  
+15                    19  human_metadata_31.pkl   float64  
+16                    16  human_metadata_60.pkl   float64  
+17                    19  mouse_metadata_26.pkl   float64  
+18                     5  human_metadata_70.pkl  category  
+19                     5  human_metadata_70.pkl  category  
+20                     2  human_metadata_70.pkl  category  
+21                     2  human_metadata_70.pkl  category  
+22                    19  human_metadata_70.pkl     int64  
+23                     1  human_metadata_70.pkl  category  
+24                     9  human_metadata_69.pkl  category  
+25                     6  human_metadata_70.pkl  category  
+26                     6  human_metadata_70.pkl  category  
+27                     9  human_metadata_69.pkl  category  
+28                     0  human_metadata_70.pkl  category  
+
+Total bits required to represent all fields (max cardinality): 245
