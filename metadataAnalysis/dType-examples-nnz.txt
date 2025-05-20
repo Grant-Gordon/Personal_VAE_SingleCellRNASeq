@@ -1,0 +1,112 @@
+                                  Field Name Data Type  \
+0                                soma_joinid     int64   
+1                                 dataset_id  category   
+2                                      assay  category   
+3                     assay_ontology_term_id  category   
+4                                  cell_type  category   
+5                 cell_type_ontology_term_id  category   
+6                          development_stage  category   
+7         development_stage_ontology_term_id  category   
+8                                    disease  category   
+9                   disease_ontology_term_id  category   
+10                                  donor_id  category   
+11                           is_primary_data      bool   
+12                        observation_joinid    object   
+13                   self_reported_ethnicity  category   
+14  self_reported_ethnicity_ontology_term_id  category   
+15                                       sex  category   
+16                      sex_ontology_term_id  category   
+17                           suspension_type  category   
+18                                    tissue  category   
+19                   tissue_ontology_term_id  category   
+20                               tissue_type  category   
+21                            tissue_general  category   
+22           tissue_general_ontology_term_id  category   
+23                                   raw_sum   float64   
+24                                       nnz     int64   
+25                              raw_mean_nnz   float64   
+26                          raw_variance_nnz   float64   
+27                           n_measured_vars     int64   
+28                                 dev_stage    object   
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              Example Values  \
+0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         [40359023, 14516817, 67471048, 42665159, 26945593]   
+1   ['ebc2e1ff-c8f9-466a-acf4-9d291afaf8b3', 'c893ddc3-f25b-45e2-8c9e-155918b4261c', '9f222629-9e39-47d0-b83f-e08d610c7479', '1a38e762-2465-418f-b81c-6a4bce261c34', 'cda2c8cd-be1c-42e5-b2cd-162caa1c4ce7']
+Categories (678, object): ['0041b9c3-6a49-4bf7-8514-9bc7190067a7', '00476f9f-ebc1-4b72-b541-32f912ce36ea', '00e5dedd-b9b7-43be-8c28-b0e5c6414a62', '00ff600e-6e2e-4d76-846f-0eec4f0ae417', ..., 'fe4b89d5-461e-440c-a5a8-621b37b122c0', 'fe52003e-1460-4a65-a213-2bb1a508332f', 'ff45e623-7f5f-46e3-b47d-56be0341f66b', 'ff7d15fa-f4b6-4a0e-992e-fd0c9d088ded']   
+2                                                                                                                                                                                                                                                                                                                                           ['10x 5' v1', '10x 3' v3', '10x 3' v2', 'sci-RNA-seq', 'SPLiT-seq']
+Categories (24, object): ['10x 3' transcription profiling', '10x 3' v1', '10x 3' v2', '10x 3' v3', ..., 'TruDrop', 'inDrop', 'microwell-seq', 'sci-RNA-seq']   
+3                                                                                                                                                                                                                                                                                                                                         ['EFO:0011025', 'EFO:0009922', 'EFO:0009899', 'EFO:0010550', 'EFO:0009919']
+Categories (24, object): ['EFO:0008722', 'EFO:0008780', 'EFO:0008796', 'EFO:0008919', ..., 'EFO:0700004', 'EFO:0700010', 'EFO:0700011', 'EFO:0700016']   
+4                                                                                                                                                                                                                                                   ['CD4-positive, alpha-beta T cell', 'oligodendrocyte', 'unknown', 'neural cell', 'endothelial cell']
+Categories (698, object): ['A2 amacrine cell', 'B cell', 'B-1 B cell', 'B-1a B cell', ..., 'vein endothelial cell', 'ventricular cardiac muscle cell', 'vip GABAergic cortical interneuron', 'visceromotor neuron']   
+5                                                                                                                                                                                                                                                                                                                                                           ['CL:0000624', 'CL:0000128', 'unknown', 'CL:0002319', 'CL:0000115']
+Categories (698, object): ['CL:0000001', 'CL:0000006', 'CL:0000015', 'CL:0000019', ..., 'CL:4033054', 'CL:4033057', 'CL:4033058', 'unknown']   
+6                                                                                                                                                                                                             ['5-year-old human stage', '23-year-old human stage', 'unknown', '16-year-old human stage', '35-year-old human stage']
+Categories (176, object): ['1-month-old human stage', '1-year-old human stage', '10-month-old human stage', '10-year-old human stage', ..., 'third decade human stage', 'under-1-year-old human stage', 'unknown', 'young adult stage']   
+7                                                                                                                                                                                                                                                                                                               ['HsapDv:0000099', 'HsapDv:0000117', 'unknown', 'HsapDv:0000110', 'HsapDv:0000129']
+Categories (176, object): ['HsapDv:0000002', 'HsapDv:0000015', 'HsapDv:0000016', 'HsapDv:0000018', ..., 'HsapDv:0000243', 'HsapDv:0000246', 'HsapDv:0000256', 'unknown']   
+8                                                                                                                                                                                        ['COVID-19', 'normal', 'chronic obstructive pulmonary disease', 'squamous cell lung carcinoma', 'systemic lupus erythematosus']
+Categories (109, object): ['Alzheimer disease', 'B-cell acute lymphoblastic leukemia', 'B-cell non-Hodgkin lymphoma', 'Barrett esophagus', ..., 'tubular adenoma', 'tubulovillous adenoma', 'type 1 diabetes mellitus', 'type 2 diabetes mellitus']   
+9                                                                                                                                                                                                                                                                                                                ['MONDO:0100096', 'PATO:0000461', 'MONDO:0005002', 'MONDO:0005097', 'MONDO:0007915']
+Categories (109, object): ['MONDO:0000265', 'MONDO:0000709', 'MONDO:0000819', 'MONDO:0001056', ..., 'MONDO:0100233', 'MONDO:0100320', 'MONDO:0600025', 'PATO:0000461']   
+10                                                                                                                                                                                                                                                                                                                        ['S00033', 'LR_RM.1034.F.W.23', 'homosapiens_None_2023_None_sikkemalisa_002_d10_1101_2022_03_10_483747193CO', 'RL2102', 'A43']
+Categories (6603, object): ['#105', '#138', '#215', '#60', ..., 'subject_1', 'subject_2', 'subject_3', 'subject_4']   
+11                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    [True]   
+12                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              [Ky*BI`P>z+, M@R#fBjnQK, *1=Po)!)oz, SmMfu<;Puy, te=^;Jz#!&]   
+13                                                                                                                                                                                                                                                                                                     ['unknown', 'European', 'Asian', 'Japanese', 'African American or Afro-Caribbean']
+Categories (31, object): ['African', 'African American', 'African American or Afro-Caribbean', 'American', ..., 'Singaporean Malay', 'South Asian', 'South East Asian', 'unknown']   
+14                                                                                                                                                                                                                                                                                                ['unknown', 'HANCESTRO:0005', 'HANCESTRO:0008', 'HANCESTRO:0019', 'HANCESTRO:0016']
+Categories (31, object): ['HANCESTRO:0005', 'HANCESTRO:0005,HANCESTRO:0008', 'HANCESTRO:0006', 'HANCESTRO:0007', ..., 'HANCESTRO:0590', 'HANCESTRO:0597', 'HANCESTRO:0598', 'unknown']   
+15                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ['female', 'unknown', 'male']
+Categories (3, object): ['female', 'male', 'unknown']   
+16                                                                                                                                                                                                                                                                                                                                                                                                                                                           ['PATO:0000383', 'unknown', 'PATO:0000384']
+Categories (3, object): ['PATO:0000383', 'PATO:0000384', 'unknown']   
+17                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ['cell', 'nucleus']
+Categories (2, object): ['cell', 'nucleus']   
+18                                                                                                                                                                                                                                                                                            ['blood', 'caudate nucleus', 'lung', 'frontal cortex', 'thymus']
+Categories (267, object): ['Brodmann (1909) area 4', 'adipose tissue', 'adrenal gland', 'adrenal tissue', ..., 'visceral abdominal adipose tissue', 'white matter of cerebellum', 'yolk sac', 'zone of skin']   
+19                                                                                                                                                                                                                                                                                                ['UBERON:0000178', 'UBERON:0001873', 'UBERON:0002048', 'UBERON:0001870', 'UBERON:0002370']
+Categories (267, object): ['UBERON:0000002', 'UBERON:0000004', 'UBERON:0000006', 'UBERON:0000014', ..., 'UBERON:8410026', 'UBERON:8440012', 'UBERON:8480009', 'UBERON:8480028']   
+20                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ['tissue']
+Categories (1, object): ['tissue']   
+21                                                                                                                                                                                                                                                                                                                                                              ['blood', 'brain', 'lung', 'endocrine gland', 'large intestine']
+Categories (55, object): ['adipose tissue', 'adrenal gland', 'axilla', 'bladder organ', ..., 'ureter', 'uterus', 'vasculature', 'yolk sac']   
+22                                                                                                                                                                                                                                                                                                 ['UBERON:0000178', 'UBERON:0000955', 'UBERON:0002048', 'UBERON:0002368', 'UBERON:0000059']
+Categories (55, object): ['UBERON:0000004', 'UBERON:0000029', 'UBERON:0000030', 'UBERON:0000056', ..., 'UBERON:0007650', 'UBERON:0009472', 'UBERON:0018707', 'UBERON:8480009']   
+23                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  [3691.0, 7066.0, 4364.0, 3441.0, 3503.0]   
+24                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            [1018, 2675, 1848, 1739, 1465]   
+25                                                                                                                                                                                                                                                                                                                                                                                                                                                                        [3.6257367387033397, 2.641495327102804, 2.3614718614718613, 1.9787234042553192, 2.391126279863481]   
+26                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [86.80472536622023, 68.3033635073641, 19.86385316542328, 10.025438875694734, 29.16863705029933]   
+27                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       [31826, 31450, 50205, 17109, 30557]   
+28                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [immature, young_adult, unknown, late_adult, embryonic]   
+
+    Non-Null Count  Unique Count  
+0           499968        499968  
+1           499968           365  
+2           499968            24  
+3           499968            24  
+4           499968           649  
+5           499968           649  
+6           499968           176  
+7           499968           176  
+8           499968           107  
+9           499968           107  
+10          499968          5958  
+11          499968             1  
+12          499968        499901  
+13          499968            31  
+14          499968            31  
+15          499968             3  
+16          499968             3  
+17          499968             2  
+18          499968           262  
+19          499968           262  
+20          499968             1  
+21          499968            55  
+22          499968            55  
+23          499968         47066  
+24          499968         11037  
+25          499968        432654  
+26          499968        499665  
+27          499968           360  
+28          499968             7  
