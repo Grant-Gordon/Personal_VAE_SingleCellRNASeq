@@ -4,7 +4,7 @@ from scipy import sparse
 import pickle
 
 
-class SingeleChunkDataset(Dataset):
+class SingleChunkDataset(Dataset):
     def __init__(self, counts_path, metadata_path, vocab_dict=None):
         self.vocab_dict = vocab_dict or {}
 
@@ -22,15 +22,23 @@ class SingeleChunkDataset(Dataset):
 
         meta_row = self.metadata.iloc[index]
         meta_encoded = {}
-        for k in meta_row.index: #k=column name
-            v = meta_row[k]
-            if k in self.vocab_dict:
-                meta_encoded[k] = torch.tensor(self.vocab_dict[k].get(v,0), dtype=torch.long)
-            elif isinstance(v, (int,float)):
-                meta_encoded[k] = torch.tensor(v, dtype=torch.float32)
-            else:
-                continue
-    
+
+        for field, spec in self.metadata_fields.items():
+                if spec["type"] == "IGNORE":
+                    continue
+
+                value = meta_row[field]
+
+                if spec["type"] == "embedding" or spec["type"] == "onehot":
+                    vocab = self.vocab_dict.get(field, {})
+                    idx = vocab.get(value, 0)
+                    meta_encoded[field] = torch.tensor(idx, dtype=torch.long)
+
+                elif spec["type"] == "continuous":
+                    meta_encoded[field] = torch.tensor(float(value), dtype=torch.float32)
+
+
+
         return{
             "expr":expr,
             "metadata":meta_encoded

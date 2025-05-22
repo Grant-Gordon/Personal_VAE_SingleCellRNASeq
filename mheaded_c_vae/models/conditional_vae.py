@@ -4,11 +4,11 @@ import torch.nn.functional as F
 
 
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_dim, latent_dim, metadata_config, vocab_dict):
+    def __init__(self, input_dim, latent_dim, metadata_fields_dict, vocab_dict):
         super().__init__()
         self.input_dim = input_dim
         self.latent_dim = latent_dim
-        self.metadata_config = metadata_config
+        self.metadata_fields_dict = metadata_fields_dict
         self.vocab_dict=vocab_dict
 
 
@@ -28,25 +28,27 @@ class ConditionalVAE(nn.Module):
 
         #Metadata Heads
         self.metadata_heads = nn.ModuleDict()
-        for field, strategy in metadata_config.items():
-            num_classes = len(vocab_dict[field])
+        for field, strategy in metadata_fields_dict.items():
             if strategy["type"] == "embedding":
+                embedding_dim = strategy.get("embedding_dim", 16 )
+                num_classes = len(vocab_dict[field])
                 self.metadata_heads[field] = nn.Sequential(
-                    nn.Embedding(num_classes, strategy.get("embedding_dim", 16 )),
-                    nn.Linear(strategy.get("embedding_dim",16), latent_dim),
+                    nn.Embedding(num_classes, embedding_dim),
+                    nn.Linear(embedding_dim, latent_dim),
                     nn.ReLU(),
                     nn.Linear(latent_dim, latent_dim)
                 )
             elif strategy["type"] == "onehot":
+                num_classes = len(vocab_dict[field]) #TODO
                 self.metadata_heads[field] = nn.Sequential(
                     nn.Linear(num_classes, latent_dim),
-                    nn.ReLU,
+                    nn.ReLU(),
                     nn.Linear(latent_dim, latent_dim)
                 )
             elif strategy["type"] == "continuous":
                 self.metadata_heads[field] = nn.Sequential(
                     nn.Linear(1, latent_dim),
-                    nn.ReLu(),
+                    nn.ReLU(),
                     nn.Linear(latent_dim, latent_dim)
                 )
 
@@ -80,7 +82,7 @@ class ConditionalVAE(nn.Module):
         offsets = []
         for field, head in self.metadata_heads.items():
             value = metadata[field] #shape B or B,dim TODO ? 
-            strategy = self.metadata_config[field]["type"]
+            strategy = self.metadata_fields_dict[field]["type"]
             
             if strategy == "embedding":
                 offset = head(value)

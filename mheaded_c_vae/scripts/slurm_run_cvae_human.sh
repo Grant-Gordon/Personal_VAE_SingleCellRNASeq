@@ -3,7 +3,7 @@
 #SBATCH --output=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.out
 #SBATCH --error=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.err
 #SBATCH --time=2:00:00
-#SBATCH --gpus-per-node=2
+#SBATCH --gpus-per-node=1
 #SBATCH --mem-per-gpu=32G
 
 GIT_ROOT_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq"
@@ -26,3 +26,5 @@ python3 ./scripts/vocab_builder.py --config $CONFIG_PATH
 python3 ./training/train.py --config $CONFIG_PATH
 
 cp $CONFIG_PATH $OUTPUT_DIR
+mv dataloader_timeing_log.csv $OUTPUT_DIR
+mv tensorboard_logs $OUTPUT_DIR

@@ -1,7 +1,7 @@
 import os
 from torch.utils.data import DataLoader
 from dataloader.chunks_dataset import ChunksDataset
-from dataloader.single_chunk_dataset import SingeleChunkDataset
+from dataloader.single_chunk_dataset import SingleChunkDataset
 
 
 def create_chunks_dataset(data_dir, species):
@@ -10,7 +10,7 @@ def create_chunks_dataset(data_dir, species):
 def create_dataloader(data_dir, counts_file, metadata_file, batch_size, config):
     vocab_dict = config.get("metadata_vocab", {})
 
-    dataset = SingeleChunkDataset(
+    dataset = SingleChunkDataset(
         counts_path=os.path.join(data_dir, counts_file),
         metadata_path=os.path.join(data_dir, metadata_file),
         vocab_dict=vocab_dict

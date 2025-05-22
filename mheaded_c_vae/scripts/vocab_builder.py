@@ -3,15 +3,16 @@ import pickle
 import pandas as pd
 import yaml
 from collections import defaultdict
+from utils.config_parser import parse_config
 
 
 def build_vocab(config):
     data_dir = config["data"]["data_dir"]
     species = config["data"]["species"]
-    save_dir = config["vocab_builder_out"]
+    save_dir = config["data"]["vocab_builder_out"]
 
     metadata_fields = config["metadata_fields"]
-    ignored_fields = [field for field, meta in metadata_fields.item() if meta["type"] in ["onehot", "IGNORE", "continuous"]]
+    ignored_fields = [field for field, meta in metadata_fields.items() if meta["type"] ==  "IGNORE"]
   
     os.makedirs(save_dir, exist_ok=True)
     vocab_path = os.path.join(save_dir, f"{species}_vocab_dict.pkl")
@@ -20,16 +21,14 @@ def build_vocab(config):
         with open(vocab_path, 'rb') as f:
             existing_vocab = pickle.load(f)
         existing_fields = set(existing_vocab.keys())
-        expected_fields = set(field for field, meta in metadata_fields.items() if meta["type"] == "embedding")
+        expected_fields = set(field for field, meta in metadata_fields.items() if meta["type"] in ["embedding", "onehot"])
         if existing_fields == expected_fields:
             print(f"Vocab for species '{species}' at '{vocab_path}' already exists with desired fields. Skipping Rebuild...")
             return vocab_path
         else:
-            print(f"#############################################################\n\
-                  WARNING: Existing vocab file at '{vocab_path} does not match desired fields in config. REBUILDING...'\
-                  #############################################################\n")
-
-        return vocab_path
+            print(f"#############################################################\n"
+                  "WARNING: Existing vocab file at '{vocab_path} does not match desired fields in config. REBUILDING...\n"
+                  "#############################################################\n")
     
     field_values = defaultdict(set)
 
@@ -40,7 +39,7 @@ def build_vocab(config):
         file_path = os.path.join(data_dir, filename)
         with open(file_path, 'rb') as f:
             df = pickle.load(f)
-            assert isinstance(df, pd.dataFrame), f"Assert Error, expected type pandas.dataFrame from file at {file_path}"
+            assert isinstance(df, pd.DataFrame), f"Assert Error, expected type pandas.dataFrame from file at '{file_path}'"
 
             for field in df.columns:
                 if field in ignored_fields:
@@ -64,12 +63,5 @@ def build_vocab(config):
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, required=True, help="path to YAML config file")
-    args=parser.parse_args()
-
-    with open(args.condig, 'r') as f:
-        config = yaml.safe_load(f)
+    config = parse_config()
     build_vocab(config)

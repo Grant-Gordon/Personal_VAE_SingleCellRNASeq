@@ -2,6 +2,7 @@ import os
 import time
 import torch
 import numpy as np
+import pickle
 from queue import Queue
 from dataloader.preloader import start_preload_workers
 from utils.logging_helpers import init_logging
@@ -21,7 +22,7 @@ class Trainer:
             config["data"]["data_dir"],
             config["data"]["species"]
         )
-        self.preload_queue = Queue(maxsize=["data"]["chunks_preloaded"])
+        self.preload_queue = Queue(maxsize=config["data"]["chunks_preloaded"])
         self.chunk_queue=Queue()
 
         start_preload_workers(
@@ -35,7 +36,7 @@ class Trainer:
         )
 
         #logging
-        self.tbWriter, self.log_file, self.csv_writer = init_logging(config["trainig"]["output_dir"])
+        self.tbWriter, self.log_file, self.csv_writer = init_logging(config["training"]["output_dir"])
 
 
         #dynamically get input size from first chunk
@@ -49,12 +50,16 @@ class Trainer:
         )
         expr_dim = first_loader.dataset[0]['expr'].shape[0]
 
+
         #init model, optimizer, loss
+        with open(config["metadata_vocab"], 'rb') as f:
+            vocab_dict= pickle.load(f)
+
         self.model = ConditionalVAE(
             input_dim=expr_dim,
-            latent_dim=config["mode"]["latent_dim"],
-            metadata_config=config["metadata_fields"],
-            vocab_dict=config["vocab_dict"],
+            latent_dim=config["model"]["latent_dim"],
+            metadata_fields_dict=config["metadata_fields"],
+            vocab_dict=vocab_dict,
         ).to(self.device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr = config["training"]["lr"])
