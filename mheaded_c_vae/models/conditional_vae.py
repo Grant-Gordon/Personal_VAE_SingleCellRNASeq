@@ -1,0 +1,104 @@
+import torch 
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class ConditionalVAE(nn.Module):
+    def __init__(self, input_dim, latent_dim, metadata_config, vocab_dict):
+        super().__init__()
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        self.metadata_config = metadata_config
+        self.vocab_dict=vocab_dict
+
+
+
+        #Gene Expression Encoder (VAE)
+
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU()
+        )
+
+        self.fc_mu = nn.Linear(256, latent_dim)
+        self.fc_logvar = nn.Linear(256, latent_dim)
+
+
+        #Metadata Heads
+        self.metadata_heads = nn.ModuleDict()
+        for field, strategy in metadata_config.items():
+            num_classes = len(vocab_dict[field])
+            if strategy["type"] == "embedding":
+                self.metadata_heads[field] = nn.Sequential(
+                    nn.Embedding(num_classes, strategy.get("embedding_dim", 16 )),
+                    nn.Linear(strategy.get("embedding_dim",16), latent_dim),
+                    nn.ReLU(),
+                    nn.Linear(latent_dim, latent_dim)
+                )
+            elif strategy["type"] == "onehot":
+                self.metadata_heads[field] = nn.Sequential(
+                    nn.Linear(num_classes, latent_dim),
+                    nn.ReLU,
+                    nn.Linear(latent_dim, latent_dim)
+                )
+            elif strategy["type"] == "continuous":
+                self.metadata_heads[field] = nn.Sequential(
+                    nn.Linear(1, latent_dim),
+                    nn.ReLu(),
+                    nn.Linear(latent_dim, latent_dim)
+                )
+
+        #Decoder
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, input_dim)
+        )
+        self.norm = nn.LayerNorm(latent_dim)
+
+    def encode(self,x):
+        hidden = self.encoder(x)
+        mu = self.fc_mu(hidden)
+        logvar = self.fc_logvar(hidden)
+        return mu, logvar
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu +eps * std
+    
+    def forward(self, expr, metadata):
+        mu, logvar = self.encode(expr)
+        z = self.reparameterize(mu, logvar)
+        z = self.norm(z)
+
+        #add metadata additive effects
+        offsets = []
+        for field, head in self.metadata_heads.items():
+            value = metadata[field] #shape B or B,dim TODO ? 
+            strategy = self.metadata_config[field]["type"]
+            
+            if strategy == "embedding":
+                offset = head(value)
+            elif strategy == "onehot":
+                onehot = F.one_hot(value, num_classes=len(self.vocab_dict[field])).float()
+                offset = head(onehot)
+            elif strategy == "continuous":
+                offset = head(value.unsqueeze(1))
+
+            offsets.append(offset)
+        
+        if offsets:
+            z += sum(offsets)
+        recon = self.decoder(z)
+        return recon, mu, logvar
+    
+    def vae_loss(self, recon, target, mu, logvar):
+        recon_loss = F.mse_loss(recon, target, reduction="mean")
+        kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())/ mu.size(0)
+        total_loss = recon_loss + kl_div
+        return total_loss, recon_loss, kl_div
