@@ -88,6 +88,8 @@ class ConditionalVAE(nn.Module):
             
             if strategy == "embedding":
                 offset = head(value)
+                assert offset.dtype.is_floating_point, f"ASSERT ERROR: {field} head output is not float"
+
 
             elif strategy == "onehot":
                 onehot = F.one_hot(value, num_classes=len(self.vocab_dict[field])).float()
@@ -97,7 +99,7 @@ class ConditionalVAE(nn.Module):
                 offset = head(value.unsqueeze(1))
 
             offsets.append(offset)
-            offsets_dict[field] = value
+            offsets_dict[field] = offset
         
         if offsets:
             z += sum(offsets)

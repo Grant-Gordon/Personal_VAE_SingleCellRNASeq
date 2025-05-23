@@ -35,6 +35,10 @@ def log_latent_distributions(writer, mu, logvar, global_timestep):
 def log_metadata_head_offsets_norms(writer, metadata_offsets_dict, global_timestep):
   
   for field, offset in metadata_offsets_dict.items():
+        if not offset.is_floating_point():
+            print(f"WARNING: Skipping norm logging for field '{field}' — not a float tensor.") #TODO fix
+            continue
+
         norms = torch.norm(offset.detach(), dim=1)  # shape: [batch_size]
         mean_norm = norms.mean().item()
         writer.add_scalar(f"metadata_head_norm/{field}", mean_norm, global_timestep)
