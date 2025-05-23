@@ -5,9 +5,9 @@ import pickle
 
 
 class SingleChunkDataset(Dataset):
-    def __init__(self, counts_path, metadata_path, vocab_dict=None):
-        self.vocab_dict = vocab_dict or {}
-
+    def __init__(self, counts_path, metadata_path, vocab_dict, metadata_fields):
+        self.vocab_dict = vocab_dict
+        self.metadata_fields = metadata_fields
         with open(counts_path, 'rb') as f:
             self.counts_csr = sparse.load_npz(f)
         self.samples_in_chunk = self.counts_csr.shape[0]
@@ -15,10 +15,10 @@ class SingleChunkDataset(Dataset):
 
         with open(metadata_path, 'rb') as f:
             self.metadata = pickle.load(f)
-
+        
 
     def __getitem__(self, index):
-        expr = torch.tensor(self.count_csr[index].toarray().flatten(), dtype=torch.float32)
+        expr = torch.tensor(self.counts_csr[index].toarray().flatten(), dtype=torch.float32)
 
         meta_row = self.metadata.iloc[index]
         meta_encoded = {}

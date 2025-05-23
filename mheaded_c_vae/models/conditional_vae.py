@@ -80,23 +80,30 @@ class ConditionalVAE(nn.Module):
 
         #add metadata additive effects
         offsets = []
+        offsets_dict={}
+
         for field, head in self.metadata_heads.items():
             value = metadata[field] #shape B or B,dim TODO ? 
             strategy = self.metadata_fields_dict[field]["type"]
             
             if strategy == "embedding":
                 offset = head(value)
+
             elif strategy == "onehot":
                 onehot = F.one_hot(value, num_classes=len(self.vocab_dict[field])).float()
                 offset = head(onehot)
+
             elif strategy == "continuous":
                 offset = head(value.unsqueeze(1))
 
             offsets.append(offset)
+            offsets_dict[field] = value
         
         if offsets:
             z += sum(offsets)
+
         recon = self.decoder(z)
+        self.last_metadata_offsets = offsets_dict
         return recon, mu, logvar
     
     def vae_loss(self, recon, target, mu, logvar):

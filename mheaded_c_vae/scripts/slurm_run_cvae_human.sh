@@ -20,11 +20,9 @@ export PYTHONPATH="$PROJECT_ROOT_DIR:$PYTHONPATH"
 cd $PROJECT_ROOT_DIR ||exit 1
 
 # Step 1: Build vocab (skips if already exists)
-python3 ./scripts/vocab_builder.py --config $CONFIG_PATH
+python3 ./scripts/vocab_builder.py --config $CONFIG_PATH training.output_dir=$OUTPUT_DIR
 
 # Step 2: Train model
-python3 ./training/train.py --config $CONFIG_PATH
+python3 ./training/train.py --config $CONFIG_PATH training.output_dir=$OUTPUT_DIR
 
 cp $CONFIG_PATH $OUTPUT_DIR
-mv dataloader_timeing_log.csv $OUTPUT_DIR
-mv tensorboard_logs $OUTPUT_DIR

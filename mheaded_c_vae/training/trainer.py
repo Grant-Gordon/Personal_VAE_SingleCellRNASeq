@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 from queue import Queue
 from dataloader.preloader import start_preload_workers
-from utils.logging_helpers import init_logging
+from utils.logging_helpers import init_logging, log_latent_distributions, log_metadata_head_offsets_norms
 from dataloader.loader import create_chunks_dataset, create_dataloader
 from models.conditional_vae import ConditionalVAE
 import torch.nn as nn
@@ -15,6 +15,9 @@ import torch.optim as optim
 class Trainer:
     def __init__(self, config):
         self.config = config
+        self.current_epoch = -1
+        self.global_timestep = -1
+
         self.device = torch.device(config['training'].get('device','cuda'))
 
         #init dataset and preload queeus
@@ -67,12 +70,9 @@ class Trainer:
 
     def train(self):
         num_epochs = self.config['training']['epochs']
-        batch_size = self.config['training']['batch_size']
-        data_dir = self.config['data']['data_dir']
-
         for epoch in range(num_epochs):
             epoch_start = time.time()
-
+            self.current_epoch = epoch
             #queue chunk idxs for the epoch
             for idx in range(len(self.chunks_dataset)):
                 self.chunk_queue.put(idx)
@@ -83,7 +83,8 @@ class Trainer:
                 loaded_idx, loader, chunk_load_time = self.preload_queue.get()
                 assert loaded_idx == chunk_idx, "loaded chunk and expected chunk idx do not match"
                 chunk_load_times.append(chunk_load_time)
-
+                
+                self.global_timestep +=1
                 chunk_loss, chunk_kl, chunk_recon, bt, ct = self.train_chunk(loader)
                 epoch_loss.append(chunk_loss)
                 epoch_kl.append(chunk_kl)
@@ -123,6 +124,9 @@ class Trainer:
             total_kl += kl.item()
             start = time.time()
         
+        log_latent_distributions(self.tbWriter, mu, logvar, self.global_timestep)
+        log_metadata_head_offsets_norms(self.tbWriter, self.model.last_metadata_offsets, self.global_timestep)
+
         n = len(loader)
         return total_loss/n, total_kl/n, total_recon/n, batch_times, creation_times
     
