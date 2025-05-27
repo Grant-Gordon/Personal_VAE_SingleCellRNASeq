@@ -10,6 +10,7 @@ from dataloader.loader import create_chunks_dataset, create_dataloader
 from models.conditional_vae import ConditionalVAE
 import torch.nn as nn
 import torch.optim as optim
+import threading
 
 
 class Trainer:
@@ -25,17 +26,19 @@ class Trainer:
             config["data"]["data_dir"],
             config["data"]["species"]
         )
-        self.preload_queue = Queue(maxsize=config["data"]["chunks_preloaded"])
+        self.preload_buffer= {}
+        self.buffer_lock = threading.Lock()
         self.chunk_queue=Queue()
 
         start_preload_workers(
-            self.chunks_dataset,
-            config["data"]["data_dir"],
-            config['training']['batch_size'],
-            config['data']['num_preloader_threads'],
-            self.preload_queue,
-            self.chunk_queue,
-            config # pass to workers to provide vocab to datasets 
+            dataset=self.chunks_dataset,
+            data_dir=config["data"]["data_dir"],
+            batch_size=config['training']['batch_size'],
+            num_threads=config['data']['num_preloader_threads'],
+            preload_buffer=self.preload_buffer,
+            buffer_lock=self.buffer_lock,
+            chunk_queue=self.chunk_queue,
+            config=self.config # pass to workers to provide vocab to datasets 
         )
 
         #logging
@@ -80,8 +83,15 @@ class Trainer:
             epoch_loss, epoch_kl, epoch_recon, batch_times, creation_times, chunk_load_times = [],[],[],[],[],[]
 
             for chunk_idx in range(len(self.chunks_dataset)):
-                loaded_idx, loader, chunk_load_time = self.preload_queue.get()
-                assert loaded_idx == chunk_idx, "loaded chunk and expected chunk idx do not match"
+                start_time_waiting_for_chunk = time.time()
+                while True:
+                    with self.buffer_lock:
+                        if chunk_idx in self.preload_buffer:
+                            loader, chunk_load_time = self.preload_buffer.pop(chunk_idx)
+                            break
+                    if time.time() - start_time_waiting_for_chunk > 60:
+                        raise TimeoutError(f"Chunk {chunk_idx} not found in buffer ater 60 seconds.")
+                    time.sleep(0.1)
                 chunk_load_times.append(chunk_load_time)
                 
                 self.global_timestep +=1
@@ -113,7 +123,6 @@ class Trainer:
 
             batch_start_time = time.time()
             self.optimizer.zero_grad()
-            reconstructed, mu, logvar, offsets_dict, z_star = self.model(expr_batch, metadata_batch)
             model_out = self.model(expr_batch, metadata_batch)
             reconstructed = model_out["recon"]
             mu = model_out["mu"]

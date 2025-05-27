@@ -39,12 +39,12 @@ def log_metadata_head_offsets_norms(
         z_star: Tensor,
         global_timestep: int
 ) -> None:
-    z_star_norm = torch.norm(z_star.detach(), dim=1).mean().itme()
+    z_star_norm = torch.norm(z_star.detach(), dim=1).mean().item()
 
     field_norms: Dict[str, float]= {}
 
     for field, offset in metadata_offsets_dict.items():
-        norms = torch.norm(offset.detatch(), dim=1)
+        norms = torch.norm(offset.detach(), dim=1)
         mean_norm = norms.mean().item()
         field_norms[field] = mean_norm
     
