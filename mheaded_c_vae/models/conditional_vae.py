@@ -31,7 +31,9 @@ class ConditionalVAE(nn.Module):
         self.metadata_heads = nn.ModuleDict()
         for field, strategy in metadata_fields_dict.items():
             if strategy["type"] == "embedding":
-                embedding_dim = strategy.get("embedding_dim", 16 )
+                embedding_dim = strategy.get("embedding_dim", self.latent_dim )
+                if embedding_dim != self.latent_dim:
+                    print(f"WARNING: Embeding dim for {field} ({embedding_dim}) != latent_dim ({self.latent_dim}). Check config files")
                 num_classes = len(vocab_dict[field])
                 self.metadata_heads[field] = nn.Sequential(
                     nn.Embedding(num_classes, embedding_dim),
