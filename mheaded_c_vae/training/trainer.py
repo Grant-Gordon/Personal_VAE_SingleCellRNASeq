@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 from queue import Queue
 from dataloader.preloader import start_preload_workers
-from utils.logging_helpers import init_logging, log_latent_distributions, log_metadata_head_offsets_norms
+import utils.logging_helpers as logging
 from dataloader.loader import create_chunks_dataset, create_dataloader
 from models.conditional_vae import ConditionalVAE
 import torch.nn as nn
@@ -39,7 +39,7 @@ class Trainer:
         )
 
         #logging
-        self.tbWriter, self.log_file, self.csv_writer = init_logging(config["training"]["output_dir"])
+        self.tbWriter, self.log_file, self.csv_writer = logging.init_logging(config["training"]["output_dir"])
 
 
         #dynamically get input size from first chunk
@@ -113,7 +113,16 @@ class Trainer:
 
             batch_start_time = time.time()
             self.optimizer.zero_grad()
-            reconstructed, mu, logvar = self.model(expr_batch, metadata_batch)
+            reconstructed, mu, logvar, offsets_dict, z_star = self.model(expr_batch, metadata_batch)
+            model_out = self.model(expr_batch, metadata_batch)
+            reconstructed = model_out["recon"]
+            mu = model_out["mu"]
+            logvar = model_out["logvar"]
+            offsets_dict = model_out["offsets"]
+            z_star = model_out["z_star"]
+            z = model_out["z"]
+
+
             loss, recon_loss, kl = self.model.vae_loss(reconstructed, expr_batch, mu, logvar)
             loss.backward()
             self.optimizer.step()
@@ -124,9 +133,10 @@ class Trainer:
             total_kl += kl.item()
             start = time.time()
         
-        log_latent_distributions(self.tbWriter, mu, logvar, self.global_timestep)
-        log_metadata_head_offsets_norms(self.tbWriter, self.model.last_metadata_offsets, self.global_timestep)
-
+        logging.log_latent_distributions(writer=self.tbWriter, mu=mu, logvar=logvar, global_timestep=self.global_timestep)
+        logging.log_metadata_head_offsets_norms(writer=self.tbWriter, metadata_offsets_dict=offsets_dict, z_star=z_star,  global_timestep=self.global_timestep)
+        logging.log_z_baseline_norm(writer=self.tbWriter, z=z, global_timesetp=self.global_timestep)
+        logging.log_z_shift_from_metadata(writer=self.tbWriter,z=z, z_star=z_star, global_timestep=self.global_timestep)
         n = len(loader)
         return total_loss/n, total_kl/n, total_recon/n, batch_times, creation_times
     

@@ -1,7 +1,8 @@
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch import Tensor
+from typing import Dict, Tuple
 
 class ConditionalVAE(nn.Module):
     def __init__(self, input_dim, latent_dim, metadata_fields_dict, vocab_dict):
@@ -73,7 +74,19 @@ class ConditionalVAE(nn.Module):
         eps = torch.randn_like(std)
         return mu +eps * std
     
-    def forward(self, expr, metadata):
+    def forward(self, expr:Tensor , metadata: Dict[str, Tensor]) -> Dict[str, Tensor] :
+        """
+        Args:
+            expr: Tensor of shape [B, input_dim]
+            metadata: Dict[str, Tensor] for each metadata field
+
+        Returns:
+            recon: reconstructed input
+            mu, logvar: parameters of approximate posterior
+            offsets_dict: per-field metadata offsets (B, latent_dim)
+            z_star: metadata-conditioned latent vector
+        """
+
         mu, logvar = self.encode(expr)
         z = self.reparameterize(mu, logvar)
         z = self.norm(z)
@@ -83,13 +96,11 @@ class ConditionalVAE(nn.Module):
         offsets_dict={}
 
         for field, head in self.metadata_heads.items():
-            value = metadata[field] #shape B or B,dim TODO ? 
+            value = metadata[field]
             strategy = self.metadata_fields_dict[field]["type"]
             
             if strategy == "embedding":
                 offset = head(value)
-                assert offset.dtype.is_floating_point, f"ASSERT ERROR: {field} head output is not float"
-
 
             elif strategy == "onehot":
                 onehot = F.one_hot(value, num_classes=len(self.vocab_dict[field])).float()
@@ -97,16 +108,23 @@ class ConditionalVAE(nn.Module):
 
             elif strategy == "continuous":
                 offset = head(value.unsqueeze(1))
+            else:
+                raise ValueError(f"Unknown strategy: {strategy}")
 
             offsets.append(offset)
             offsets_dict[field] = offset
         
-        if offsets:
-            z += sum(offsets)
+        z_star = self.norm(z + sum(offsets)) if offsets else z
+        recon = self.decoder(z_star)
+        return{
+            "recon": recon,
+            "mu": mu,
+            "logvar": logvar,
+            "offsets": offsets_dict,
+            "z_star": z_star,
+            "z": z
+        }
 
-        recon = self.decoder(z)
-        self.last_metadata_offsets = offsets_dict
-        return recon, mu, logvar
     
     def vae_loss(self, recon, target, mu, logvar):
         recon_loss = F.mse_loss(recon, target, reduction="mean")
