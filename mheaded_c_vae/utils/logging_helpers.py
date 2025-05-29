@@ -4,6 +4,10 @@ import torch
 from typing import Dict
 from torch.utils.tensorboard import SummaryWriter
 from torch import Tensor
+import numpy as np
+import time
+
+
 def init_logging(output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -27,42 +31,18 @@ def init_logging(output_dir):
     ])
 
     return writer, log_file, csv_writer
+
 def log_latent_distributions(writer, mu, logvar, global_timestep):
     writer.add_scalar("latent/mu_mean", mu.mean().item(), global_timestep)
-    writer.add_scalar("latent/mu_std", mu.std().item(), global_timestep)
     writer.add_scalar("latent/logvar_mean", logvar.mean().item(), global_timestep)
-    writer.add_scalar("latent/logvar_std", logvar.std().item(), global_timestep)
 
-def log_metadata_head_offsets_norms(
-        writer: SummaryWriter, 
-        metadata_offsets_dict: Dict[str, Tensor],
-        z_star: Tensor,
-        global_timestep: int
-) -> None:
-    z_star_norm = torch.norm(z_star.detach(), dim=1).mean().item()
-
-    field_norms: Dict[str, float]= {}
-
-    for field, offset in metadata_offsets_dict.items():
-        norms = torch.norm(offset.detach(), dim=1)
-        mean_norm = norms.mean().item()
-        field_norms[field] = mean_norm
-    
-    total_offset_norm = sum(field_norms.values())
-    for field, mean_norm in field_norms.items():
-        rel_to_z = mean_norm / z_star_norm if z_star_norm != 0 else float('nan')
-        rel_to_offsets = mean_norm/ total_offset_norm if total_offset_norm != 0 else float('nan')
-
-        writer.add_scalar(f"metadata_head_norm/{field}_abs", mean_norm, global_timestep)
-        writer.add_scalar(f"metadata_head_norm/{field}_rel_to_z", rel_to_z, global_timestep)
-        writer.add_scalar(f"metadata_head_norm/{field}_rel_to_offsets", rel_to_offsets, global_timestep)
 
 def log_z_baseline_norm(writer: SummaryWriter, z:Tensor, global_timestep:int)->None:
     """
     Logs the mean L2 norm of the baseline latent vector z (before metadata).
     """
     z_norm = torch.norm(z.detach(), dim=1).mean().item()
-    writer.add_scalar("latent/z_norm_baseline", z_norm, global_timestep)
+    writer.add_scalar("norms/z/z_norm_baseline", z_norm, global_timestep)
 
 def log_z_shift_from_metadata(writer: SummaryWriter, z:Tensor, z_star: Tensor, global_timestep:int) -> None:
     """
@@ -71,5 +51,191 @@ def log_z_shift_from_metadata(writer: SummaryWriter, z:Tensor, z_star: Tensor, g
     shift = torch.norm((z_star - z).detach(), dim=1)
     base = torch.norm(z.detach(), dim=1)
     rel_shift = (shift / (base +1e-8)).mean().item()
-    writer.add_scaler("latent/z)relative_shift", rel_shift, global_timestep)
+    writer.add_scalar("norms/z/relative_shift", rel_shift, global_timestep)
 
+
+
+
+def log_epoch_loss_summary(
+        writer: SummaryWriter,
+        epoch: int,
+        loss_total: float,
+        loss_recon: float,
+        loss_kl: float
+    ) -> None:
+    """
+    Logs a summary of total, reconstruction, and KL losses at the end of each epoch.
+
+    These appear as a single graph each, x-axis = epoch.
+    """
+    writer.add_scalar("loss/total", loss_total, epoch)
+    writer.add_scalar("loss/recon", loss_recon, epoch)
+    writer.add_scalar("loss/kl", loss_kl, epoch)
+
+
+
+def log_chunk_loss_per_epoch(
+    writer: SummaryWriter,
+    epoch: int,
+    chunk_index: int,
+    loss_total: float,
+    loss_recon: float,
+    loss_kl: float
+) -> None:
+    """
+    Logs per-chunk losses under a per-epoch TensorBoard group.
+
+    This creates a separate graph per epoch, x-axis = chunk index (usually ~15 points).
+    """
+    writer.add_scalar(f"loss/per_epoch/epoch_{epoch}/total", loss_total, chunk_index)
+    writer.add_scalar(f"loss/per_epoch/epoch_{epoch}/recon", loss_recon, chunk_index)
+    writer.add_scalar(f"loss/per_epoch/epoch_{epoch}/kl", loss_kl, chunk_index)
+
+def log_epoch_timing_text(
+    writer: SummaryWriter,
+    epoch: int,
+    epoch_duration: float,
+    chunk_train_durations: list[float],
+    chunk_load_durations: list[float]
+) -> None:
+    """
+    Logs a plain-text summary of timing stats for the epoch.
+    Appears under TensorBoard's 'Text' tab.
+    """
+    summary = (
+        f"Epoch {epoch} Timing Summary:\n"
+        f"- Epoch Duration: {epoch_duration:.2f} sec\n"
+        f"- Chunk Train Time: min={min(chunk_train_durations):.2f}, "
+        f"avg={sum(chunk_train_durations)/len(chunk_train_durations):.2f}, "
+        f"max={max(chunk_train_durations):.2f} sec\n"
+        f"- Chunk Load Time: min={min(chunk_load_durations):.2f}, "
+        f"avg={sum(chunk_load_durations)/len(chunk_load_durations):.2f}, "
+        f"max={max(chunk_load_durations):.2f} sec"
+    )
+
+    print(summary)
+    writer.add_text("timing/epoch_summary", summary, global_step=epoch)
+
+def log_chunk_timing_text_per_epoch(
+    writer: SummaryWriter,
+    epoch: int,
+    per_chunk_stats: list[dict[str, float]]
+) -> None:
+    """
+    Logs a per-epoch text summary of per-chunk timing stats.
+    Each dict should contain the following float entries for a single chunk:
+      - batch_creation_min, batch_creation_avg, batch_creation_max
+      - batch_train_min, batch_train_avg, batch_train_max
+      - chunk_load_time
+      - chunk_train_duration
+    """
+    lines = [f"Timing Summary for Epoch {epoch} (per chunk):"]
+    for i, stats in enumerate(per_chunk_stats):
+        lines.append(
+            f"  Chunk {stats['chunk_idx']:02d} | "
+            f"Create: {stats['batch_creation_avg']:.2f}s "
+            f"Create Batch: min {stats['batch_creation_min']:.4f}s, ave {stats['batch_creation_avg']:.3f}s,  max {stats['batch_creation_max']:.3f}s | "
+            f"Train Batch: min {stats['batch_train_min']:.4f}, ave {stats['batch_train_avg']:.3f}s, max {stats['batch_train_max']:.3f}s | "
+            f"Load Chunk: {stats['chunk_load_time']:.2f}s | "
+            f"Total: {stats['chunk_train_duration']:.2f}s"
+        )
+
+    summary = "\n".join(lines)
+    print(summary)
+    writer.add_text(f"timing/per_epoch/epoch_{epoch}", summary, global_step=epoch)
+
+
+def log_metadata_head_offsets_norms(
+    writer: SummaryWriter,
+    metadata_offsets_dict: dict[str, torch.Tensor],
+    z_star: torch.Tensor,
+    global_timestep: int
+) -> None:
+    """
+    Logs absolute and relative L2 norms of each metadata head output.
+    Appears under:
+      - latent/metadata/rel_to_offsets/{field}
+      - latent/metadata/rel_to_z_star/{field}
+    """
+    z_star_norm = torch.norm(z_star.detach(), dim=1).mean().item()
+    field_norms: dict[str, float] = {}
+
+    for field, offset in metadata_offsets_dict.items():
+        if not offset.dtype.is_floating_point:
+            print(f"WARNING: Skipping field '{field}' — not a float tensor.")
+            continue
+
+        field_norm = torch.norm(offset.detach(), dim=1).mean().item()
+        field_norms[field] = field_norm
+
+    total_offset_norm = sum(field_norms.values())
+
+    for field, norm in field_norms.items():
+        rel_to_z = norm / z_star_norm if z_star_norm > 0 else float('nan')
+        rel_to_offsets = norm / total_offset_norm if total_offset_norm > 0 else float('nan')
+
+        writer.add_scalar(f"latent/metadata/rel_to_z_star/{field}", rel_to_z, global_timestep)
+        writer.add_scalar(f"latent/metadata/rel_to_offsets/{field}", rel_to_offsets, global_timestep)
+
+
+def log_final_training_summary(
+    writer: SummaryWriter,
+    total_wall_time: float,
+    final_loss_total: float,
+    final_loss_recon: float,
+    final_loss_kl: float,
+    final_metadata_offsets: dict[str, torch.Tensor],
+    final_z_star: torch.Tensor,
+    global_step: int
+) -> None:
+    """
+    Logs a final training summary to TensorBoard (Text tab), including:
+    - Total training wall time
+    - Final loss values
+    - Metadata field influence rankings (relative to z_star and to total offset magnitude)
+
+    `total_wall_time` is the full duration (in seconds) from the start to the end of training.
+    This includes all chunk loading, training, and overhead between epochs.
+    """
+    summary_lines = [
+        f"Final Training Summary:",
+        f"- Total Wall Time: {total_wall_time:.2f} sec"
+        f"- Final Total Loss: {final_loss_total:.4f}",
+        f"- Final Recon Loss: {final_loss_recon:.4f}",
+        f"- Final KL Loss: {final_loss_kl:.4f}",
+        ""
+    ]
+
+    # Compute norms
+    # z_star_norm = torch.norm(final_z_star.detach(), dim=1).mean().item()
+    # field_norms: dict[str, float] = {
+    #     field: torch.norm(offset.detach(), dim=1).mean().item()
+    #     for field, offset in final_metadata_offsets.items()
+    #     if offset.dtype.is_floating_point
+    # }
+    # total_offset_norm = sum(field_norms.values())
+
+    z_star_sq = (final_z_star.detach() **2).sum(dim=1).mean().item()
+    field_sq_norms: dict[str, float] = {
+        field: (offset.detach() **2).sum(dim=1).mean().item()
+        for field, offset in final_metadata_offsets.items()
+        if offset.dtype.is_floating_point
+    }
+    total_offset_sq = sum(field_sq_norms.values())
+
+
+
+    # Sort by contribution
+    sorted_fields = sorted(field_sq_norms.items(), key=lambda x: x[1], reverse=True)
+
+    summary_lines.append("- Metadata Influence Rankings (squared percent contributions):")
+    for field, norm in sorted_fields:
+        rel_to_z = 100.0 * norm / z_star_sq if z_star_sq > 0 else float('nan')
+        rel_to_offsets = 100.0 * norm / total_offset_sq if total_offset_sq > 0 else float('nan')
+        summary_lines.append(
+            f"  {field:32} | % of z*: {rel_to_z:6.2f}% | % of total offset: {rel_to_offsets:6.2f}%"
+        )
+
+    summary = "\n".join(summary_lines)
+    print(summary)
+    writer.add_text("training/final_summary", summary, global_step=global_step)

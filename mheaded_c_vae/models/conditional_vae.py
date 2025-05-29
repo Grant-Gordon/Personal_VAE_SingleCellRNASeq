@@ -91,7 +91,6 @@ class ConditionalVAE(nn.Module):
 
         mu, logvar = self.encode(expr)
         z = self.reparameterize(mu, logvar)
-        z = self.norm(z)
 
         #add metadata additive effects
         offsets = []
@@ -116,15 +115,19 @@ class ConditionalVAE(nn.Module):
             offsets.append(offset)
             offsets_dict[field] = offset
         
-        z_star = self.norm(z + sum(offsets)) if offsets else z
-        recon = self.decoder(z_star)
+        z_star_raw = z + sum(offsets) if offsets else z
+        z_star_normed = self.norm(z_star_raw)
+
+        recon = self.decoder(z_star_normed)
+
         return{
             "recon": recon,
             "mu": mu,
             "logvar": logvar,
             "offsets": offsets_dict,
-            "z_star": z_star,
-            "z": z
+            "z": z,
+            "z_star_raw": z_star_raw
+
         }
 
     

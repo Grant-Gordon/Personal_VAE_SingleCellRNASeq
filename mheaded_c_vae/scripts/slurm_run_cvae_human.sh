@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=relative_logging_small_embedding
+#SBATCH --job-name=updated_logs_small_embedding
 #SBATCH --output=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.out
 #SBATCH --error=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.err
 #SBATCH --time=2:00:00

@@ -72,15 +72,18 @@ class Trainer:
 
 
     def train(self):
+        total_train_time_start = time.time()
         num_epochs = self.config['training']['epochs']
+       
         for epoch in range(num_epochs):
             epoch_start = time.time()
             self.current_epoch = epoch
+           
             #queue chunk idxs for the epoch
             for idx in range(len(self.chunks_dataset)):
                 self.chunk_queue.put(idx)
             
-            epoch_loss, epoch_kl, epoch_recon, batch_times, creation_times, chunk_load_times = [],[],[],[],[],[]
+            epoch_loss, epoch_kl, epoch_recon, batch_times_by_chunk, creation_times_by_chunk, chunk_load_times = [],[],[],[],[],[]
 
             for chunk_idx in range(len(self.chunks_dataset)):
                 start_time_waiting_for_chunk = time.time()
@@ -95,16 +98,77 @@ class Trainer:
                 chunk_load_times.append(chunk_load_time)
                 
                 self.global_timestep +=1
-                chunk_loss, chunk_kl, chunk_recon, bt, ct = self.train_chunk(loader)
+                chunk_loss, chunk_kl, chunk_recon, bt, ct, model_out = self.train_chunk(loader)
                 epoch_loss.append(chunk_loss)
                 epoch_kl.append(chunk_kl)
                 epoch_recon.append(chunk_recon)
-                batch_times.extend(bt)
-                creation_times.extend(ct)
+                batch_times_by_chunk.append(bt)
+                creation_times_by_chunk.append(ct)
 
-                self.log_chunk_stats(epoch, chunk_idx, chunk_loss, chunk_kl, chunk_recon, bt, ct, chunk_load_time)
 
-            self.log_epoch_stats(epoch, epoch_loss, epoch_kl, epoch_recon, batch_times, creation_times, chunk_load_times, epoch_start)
+                logging.log_chunk_loss_per_epoch(
+                    writer=self.tbWriter,
+                    epoch=self.current_epoch,
+                    chunk_index=self.global_timestep,
+                    loss_total=chunk_loss,
+                    loss_recon=chunk_recon,
+                    loss_kl=chunk_kl
+                    )
+
+            epoch_duration= time.time() - epoch_start
+
+            logging.log_epoch_timing_text(
+                writer=self.tbWriter,
+                epoch=self.current_epoch,
+                epoch_duration=epoch_duration,
+                chunk_train_durations=[
+                    sum(bt) + sum(ct) for bt, ct in zip(batch_times_by_chunk, creation_times_by_chunk) #TODO?
+                ],
+                chunk_load_durations=chunk_load_times
+            )
+            per_chunk_stats = []
+            num_chunks = len(batch_times_by_chunk)
+            for i in range(num_chunks):
+                bt = batch_times_by_chunk[i]
+                ct = creation_times_by_chunk[i]
+
+                per_chunk_stats.append({
+                    "batch_creation_min": min(ct),
+                    "batch_creation_avg": sum(ct) / len(ct),
+                    "batch_creation_max": max(ct),
+                    "batch_train_min": min(bt),
+                    "batch_train_avg": sum(bt) / len(bt),
+                    "batch_train_max": max(bt),
+                    "chunk_load_time": chunk_load_times[i],
+                    "chunk_train_duration": sum(bt) + sum(ct),
+                    "chunk_idx": chunk_idx
+                })
+
+            logging.log_chunk_timing_text_per_epoch(
+                writer=self.tbWriter,
+                epoch=self.current_epoch,
+                per_chunk_stats=per_chunk_stats
+            )
+
+            logging.log_epoch_loss_summary(
+                writer=self.tbWriter,
+                epoch=self.current_epoch,
+                loss_total=np.mean(epoch_loss),
+                loss_recon=np.mean(epoch_recon),
+                loss_kl=np.mean(epoch_kl)
+            )
+        total_train_time = time.time() - total_train_time_start
+
+        logging.log_final_training_summary(
+             writer=self.tbWriter,
+            total_wall_time=total_train_time,
+            final_loss_total=np.mean(epoch_loss[-3:]),
+            final_loss_recon=np.mean(epoch_recon[-3:]),
+            final_loss_kl=np.mean(epoch_kl[-3:]),
+            final_metadata_offsets=model_out["offsets"], 
+            final_z_star=model_out["z_star_raw"],
+            global_step=self.global_timestep
+            )
 
         self.save_model()
         self.tbWriter.close()
@@ -128,7 +192,7 @@ class Trainer:
             mu = model_out["mu"]
             logvar = model_out["logvar"]
             offsets_dict = model_out["offsets"]
-            z_star = model_out["z_star"]
+            z_star = model_out["z_star_raw"]
             z = model_out["z"]
 
 
@@ -144,37 +208,12 @@ class Trainer:
         
         logging.log_latent_distributions(writer=self.tbWriter, mu=mu, logvar=logvar, global_timestep=self.global_timestep)
         logging.log_metadata_head_offsets_norms(writer=self.tbWriter, metadata_offsets_dict=offsets_dict, z_star=z_star,  global_timestep=self.global_timestep)
-        logging.log_z_baseline_norm(writer=self.tbWriter, z=z, global_timesetp=self.global_timestep)
+        logging.log_z_baseline_norm(writer=self.tbWriter, z=z, global_timestep=self.global_timestep)
         logging.log_z_shift_from_metadata(writer=self.tbWriter,z=z, z_star=z_star, global_timestep=self.global_timestep)
         n = len(loader)
-        return total_loss/n, total_kl/n, total_recon/n, batch_times, creation_times
+        return total_loss/n, total_kl/n, total_recon/n, batch_times, creation_times, model_out
     
 
-    def log_chunk_stats(self, epoch, chunk_idx, loss, kl, recon, bt, ct, load_time):
-        self.csv_writer.writerow([
-            epoch, chunk_idx, load_time,
-            sum(bt) + sum(ct), loss, recon, kl,
-            np.mean(bt), np.max(bt), np.min(bt), np.mean(ct)
-        ])
-        self.tbWriter.add_scalars(f"Chunk/Epoch_{epoch}", {
-            "Loss": loss, "KL": kl, "Recon": recon,
-            "Avg_batch_time": np.mean(bt),
-            "Avg_creation_time": np.mean(ct)
-        }, global_step=chunk_idx)
-
-    def log_epoch_stats(self, epoch, losses, kls, recons, bt, ct, chunk_times, start):
-        self.tbWriter.add_scalars("Epoch", {
-            "Loss": np.mean(losses),
-            "KL": np.mean(kls),
-            "Recon": np.mean(recons),
-            "Time": time.time() - start,
-            "Chunk_load_min": np.min(chunk_times),
-            "Chunk_load_max": np.max(chunk_times),
-            "Chunk_load_avg": np.mean(chunk_times)
-        }, epoch)
-
-        self.tbWriter.add_histogram("Batch_times", torch.tensor(bt), epoch)
-        self.tbWriter.add_histogram("Creation_times", torch.tensor(ct), epoch)
 
     def save_model(self):
         path = os.path.join(self.config['training']['output_dir'], "vae_model.pth")
