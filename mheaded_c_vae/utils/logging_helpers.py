@@ -199,7 +199,7 @@ def log_final_training_summary(
     """
     summary_lines = [
         f"Final Training Summary:",
-        f"- Total Wall Time: {total_wall_time:.2f} sec"
+        f"- Total Wall Time: {total_wall_time:.2f} sec",
         f"- Final Total Loss: {final_loss_total:.4f}",
         f"- Final Recon Loss: {final_loss_recon:.4f}",
         f"- Final KL Loss: {final_loss_kl:.4f}",

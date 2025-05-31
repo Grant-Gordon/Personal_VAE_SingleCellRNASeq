@@ -127,10 +127,9 @@ class Trainer:
                 chunk_load_durations=chunk_load_times
             )
             per_chunk_stats = []
-            num_chunks = len(batch_times_by_chunk)
-            for i in range(num_chunks):
-                bt = batch_times_by_chunk[i]
-                ct = creation_times_by_chunk[i]
+            for chunk_idx in range(len(self.chunks_dataset)):
+                bt = batch_times_by_chunk[chunk_idx]
+                ct = creation_times_by_chunk[chunk_idx]
 
                 per_chunk_stats.append({
                     "batch_creation_min": min(ct),
@@ -139,7 +138,7 @@ class Trainer:
                     "batch_train_min": min(bt),
                     "batch_train_avg": sum(bt) / len(bt),
                     "batch_train_max": max(bt),
-                    "chunk_load_time": chunk_load_times[i],
+                    "chunk_load_time": chunk_load_times[chunk_idx],
                     "chunk_train_duration": sum(bt) + sum(ct),
                     "chunk_idx": chunk_idx
                 })
