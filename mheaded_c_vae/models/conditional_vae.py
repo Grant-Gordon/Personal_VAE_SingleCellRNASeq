@@ -3,14 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from typing import Dict, Tuple
+import utils.loss_helpers as Loss
 
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_dim, latent_dim, metadata_fields_dict, vocab_dict):
+    def __init__(self, input_dim, latent_dim, metadata_fields_dict, vocab_dict, lambda_l2_penalty):
         super().__init__()
         self.input_dim = input_dim
         self.latent_dim = latent_dim
         self.metadata_fields_dict = metadata_fields_dict
         self.vocab_dict=vocab_dict
+        self.lambda_l2_penalty = lambda_l2_penalty
 
 
 
@@ -90,7 +92,7 @@ class ConditionalVAE(nn.Module):
         """
 
         mu, logvar = self.encode(expr)
-        z = self.reparameterize(mu, logvar)
+        z_expr = self.reparameterize(mu, logvar)
 
         #add metadata additive effects
         offsets = []
@@ -115,7 +117,7 @@ class ConditionalVAE(nn.Module):
             offsets.append(offset)
             offsets_dict[field] = offset
         
-        z_star_raw = z + sum(offsets) if offsets else z
+        z_star_raw = z_expr + sum(offsets) if offsets else z_expr
         z_star_normed = self.norm(z_star_raw)
 
         recon = self.decoder(z_star_normed)
@@ -125,14 +127,30 @@ class ConditionalVAE(nn.Module):
             "mu": mu,
             "logvar": logvar,
             "offsets": offsets_dict,
-            "z": z,
+            "z_expr": z_expr,
             "z_star_raw": z_star_raw
 
         }
 
     
-    def vae_loss(self, recon, target, mu, logvar):
-        recon_loss = F.mse_loss(recon, target, reduction="mean")
-        kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())/ mu.size(0)
-        total_loss = recon_loss + kl_div
-        return total_loss, recon_loss, kl_div
+    def compute_total_loss(
+            self,
+            recon:torch.Tensor,
+            target: torch.Tensor,
+            mu: torch.Tensor,
+            logvar: torch.Tensor,
+            metadata_offsets: Dict[str, torch.Tensor] = None,
+            lambda_l2: float = 0.0,
+    ) ->Dict[str, torch.Tensor]:
+        recon_loss = Loss.mse_recon_loss(recon=recon, target=target)
+        kl_loss = Loss.kl_divergence(mu=mu, logvar=logvar)
+        l2_penalty = Loss.l2_metadata_penalty(metadata_offsets=metadata_offsets, lambda_l2=lambda_l2)
+
+        total = recon_loss + kl_loss + l2_penalty
+        return {
+            "recon":recon_loss,
+            "kl": kl_loss,
+            "l2": l2_penalty,
+            "total":total
+        }
+

@@ -37,19 +37,19 @@ def log_latent_distributions(writer, mu, logvar, global_timestep):
     writer.add_scalar("latent/logvar_mean", logvar.mean().item(), global_timestep)
 
 
-def log_z_baseline_norm(writer: SummaryWriter, z:Tensor, global_timestep:int)->None:
+def log_expr_z_norm(writer: SummaryWriter, z_expr:Tensor, global_timestep:int)->None:
     """
     Logs the mean L2 norm of the baseline latent vector z (before metadata).
     """
-    z_norm = torch.norm(z.detach(), dim=1).mean().item()
-    writer.add_scalar("norms/z/z_norm_baseline", z_norm, global_timestep)
+    z_norm = torch.norm(z_expr.detach(), dim=1).mean().item()
+    writer.add_scalar("norms/z/expr_z_l2", z_norm, global_timestep)
 
-def log_z_shift_from_metadata(writer: SummaryWriter, z:Tensor, z_star: Tensor, global_timestep:int) -> None:
+def log_z_shift_from_metadata(writer: SummaryWriter, z_expr:Tensor, z_star: Tensor, global_timestep:int) -> None:
     """
     Logs the relative L2 shift from z to z_star: ‖z_star - z‖ / ‖z‖
     """
-    shift = torch.norm((z_star - z).detach(), dim=1)
-    base = torch.norm(z.detach(), dim=1)
+    shift = torch.norm((z_star - z_expr).detach(), dim=1)
+    base = torch.norm(z_expr.detach(), dim=1)
     rel_shift = (shift / (base +1e-8)).mean().item()
     writer.add_scalar("norms/z/relative_shift", rel_shift, global_timestep)
 
@@ -61,17 +61,38 @@ def log_epoch_loss_summary(
         epoch: int,
         loss_total: float,
         loss_recon: float,
-        loss_kl: float
+        loss_kl: float,
+        l2_penalty:float
     ) -> None:
     """
-    Logs a summary of total, reconstruction, and KL losses at the end of each epoch.
+    Logs a summary of total, reconstruction, and KL losses and metadata L2 penalty, at the end of each epoch.
 
-    These appear as a single graph each, x-axis = epoch.
     """
-    writer.add_scalar("loss/total", loss_total, epoch)
-    writer.add_scalar("loss/recon", loss_recon, epoch)
-    writer.add_scalar("loss/kl", loss_kl, epoch)
+    writer.add_scalars(f"loss/epoch_level", {
+        'total': loss_total,
+        'recon': loss_recon,
+        'kl': loss_kl,
+        'l2_penalty': l2_penalty
+    }, epoch)
 
+def log_global_chunk_loss_summary(
+        writer: SummaryWriter,
+        global_timestep: int,
+        loss_total: float,
+        loss_recon: float,
+        loss_kl: float,
+        l2_penalty:float
+    ) -> None:
+    """
+    Logs a summary of total, reconstruction, and KL losses and metadata L2 penalty, at the end of each chunk.
+
+    """
+    writer.add_scalars(f"loss/global_chunk_level", {
+        'total': loss_total,
+        'recon': loss_recon,
+        'kl': loss_kl,
+        'l2_penalty': l2_penalty
+    }, global_timestep)
 
 
 def log_chunk_loss_per_epoch(
@@ -148,35 +169,36 @@ def log_chunk_timing_text_per_epoch(
 def log_metadata_head_offsets_norms(
     writer: SummaryWriter,
     metadata_offsets_dict: dict[str, torch.Tensor],
-    z_star: torch.Tensor,
+    z_expr: torch.Tensor,
     global_timestep: int
 ) -> None:
     """
     Logs absolute and relative L2 norms of each metadata head output.
     Appears under:
-      - latent/metadata/rel_to_offsets/{field}
-      - latent/metadata/rel_to_z_star/{field}
+      - metadata_v_ossets/{field}
+      - metadata_v_z_expr/{field}
     """
-    z_star_norm = torch.norm(z_star.detach(), dim=1).mean().item()
+    z_expr_norm = torch.norm(z_expr.detach(), dim=1).mean().item()
     field_norms: dict[str, float] = {}
 
     for field, offset in metadata_offsets_dict.items():
-        if not offset.dtype.is_floating_point:
-            print(f"WARNING: Skipping field '{field}' — not a float tensor.")
-            continue
-
+        
+        assert offset.dtype.is_floating_point, f"Assert Error, field '{field}' is not a float tensor"
+      
         field_norm = torch.norm(offset.detach(), dim=1).mean().item()
         field_norms[field] = field_norm
 
     total_offset_norm = sum(field_norms.values())
 
     for field, norm in field_norms.items():
-        rel_to_z = norm / z_star_norm if z_star_norm > 0 else float('nan')
+        rel_to_z_star = norm / z_expr_norm if z_expr_norm > 0 else float('nan')
         rel_to_offsets = norm / total_offset_norm if total_offset_norm > 0 else float('nan')
 
-        writer.add_scalar(f"latent/metadata/rel_to_z_star/{field}", rel_to_z, global_timestep)
-        writer.add_scalar(f"latent/metadata/rel_to_offsets/{field}", rel_to_offsets, global_timestep)
+        writer.add_scalars(f"metadata/{field}",{
+            'rel_z_star' : rel_to_z_star,
+            'rel_offsets': rel_to_offsets
 
+        }, global_timestep)
 
 def log_final_training_summary(
     writer: SummaryWriter,
@@ -184,8 +206,9 @@ def log_final_training_summary(
     final_loss_total: float,
     final_loss_recon: float,
     final_loss_kl: float,
+    final_l2_penalty: float,
     final_metadata_offsets: dict[str, torch.Tensor],
-    final_z_star: torch.Tensor,
+    final_z_expr: torch.Tensor,
     global_step: int
 ) -> None:
     """
@@ -203,19 +226,10 @@ def log_final_training_summary(
         f"- Final Total Loss: {final_loss_total:.4f}",
         f"- Final Recon Loss: {final_loss_recon:.4f}",
         f"- Final KL Loss: {final_loss_kl:.4f}",
+        f"- Final l2-Penalty:{final_l2_penalty:.4f}"
         ""
     ]
-
-    # Compute norms
-    # z_star_norm = torch.norm(final_z_star.detach(), dim=1).mean().item()
-    # field_norms: dict[str, float] = {
-    #     field: torch.norm(offset.detach(), dim=1).mean().item()
-    #     for field, offset in final_metadata_offsets.items()
-    #     if offset.dtype.is_floating_point
-    # }
-    # total_offset_norm = sum(field_norms.values())
-
-    z_star_sq = (final_z_star.detach() **2).sum(dim=1).mean().item()
+    z_expr_sq = (final_z_expr.detach() **2).sum(dim=1).mean().item()
     field_sq_norms: dict[str, float] = {
         field: (offset.detach() **2).sum(dim=1).mean().item()
         for field, offset in final_metadata_offsets.items()
@@ -230,12 +244,35 @@ def log_final_training_summary(
 
     summary_lines.append("- Metadata Influence Rankings (squared percent contributions):")
     for field, norm in sorted_fields:
-        rel_to_z = 100.0 * norm / z_star_sq if z_star_sq > 0 else float('nan')
+        rel_to_z_expr = 100.0 * norm / z_expr_sq if z_expr_sq > 0 else float('nan')
         rel_to_offsets = 100.0 * norm / total_offset_sq if total_offset_sq > 0 else float('nan')
         summary_lines.append(
-            f"  {field:32} | % of z*: {rel_to_z:6.2f}% | % of total offset: {rel_to_offsets:6.2f}%"
+            f"  {field:32} | % of z*: {rel_to_z_expr:6.2f}% | % of total offset: {rel_to_offsets:6.2f}%"
         )
 
     summary = "\n".join(summary_lines)
     print(summary)
     writer.add_text("training/final_summary", summary, global_step=global_step)
+
+
+def log_l2_penalty(
+    writer: SummaryWriter,
+    l2_penalty: torch.Tensor,
+    total_loss: torch.Tensor,
+    global_step: int,
+) -> None:
+    """
+    Logs the L2 penalty and its fractional contribution to total loss.
+
+    Args:
+        writer: TensorBoard SummaryWriter instance.
+        l2_penalty: Scalar tensor representing the metadata L2 penalty.
+        total_loss: Scalar tensor for total loss (including recon, KL, etc.).
+        global_step: Current global training step.
+    """
+    writer.add_scalar("loss/l2_penalty", l2_penalty.item(), global_step)
+
+    # Avoid divide-by-zero just in case
+    if total_loss.item() > 0:
+        frac = l2_penalty.item() / total_loss.item()
+        writer.add_scalar("loss/l2_frac_of_total", frac, global_step)
