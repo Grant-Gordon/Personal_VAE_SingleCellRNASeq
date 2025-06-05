@@ -12,6 +12,7 @@ from models.conditional_vae import ConditionalVAE
 import torch.nn as nn
 import torch.optim as optim
 import threading
+from typing import Optional
 
 
 class Trainer:
@@ -198,7 +199,7 @@ class Trainer:
         self.tbWriter.close()
         self.log_file.close()
 
-    def train_chunk(self, loader,sparsity_accumulator: chunk_sparsity_accumulator.ChunkSparsityAccumulator | None = None):
+    def train_chunk(self, loader,sparsity_accumulator: Optional[chunk_sparsity_accumulator.ChunkSparsityAccumulator] = None):
         self.model.train()
         chunk_total_loss, chunk_total_kl, chunk_total_recon, chunk_total_l2_loss = 0,0,0,0
         batch_times, creation_times = [],[]

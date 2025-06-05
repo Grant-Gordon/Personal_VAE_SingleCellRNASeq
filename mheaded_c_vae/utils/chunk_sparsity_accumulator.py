@@ -10,7 +10,7 @@ class ChunkSparsityAccumulator:
      
     def __init__(self) -> None:
         
-        self._sum_by_field: dict[str, torch.Tensor] = defaultdict(lambda: None)
+        self._sum_by_field: dict[str, torch.Tensor] = {}
         self._sample_count: int = 0
 
     def update(self, offsets_dict: dict[str, torch.Tensor]) -> None:
@@ -25,11 +25,11 @@ class ChunkSparsityAccumulator:
 
         for field, offset in offsets_dict.items():
             assert offset.dtype.is_floating_point, "Assert Error: expected floating point"
-            abs_sum = offset.detatch().abs().sum(dim=0) # (D,)
-            if self._sum_by_field[field] is None:
+            abs_sum = offset.detach().abs().sum(dim=0) # (D,)
+            if field not in self._sum_by_field:
                 self._sum_by_field[field] = abs_sum
             else:
-                self._sum_by_field += abs_sum
+                self._sum_by_field[field] += abs_sum
         
     
     def finalize(self) -> dict[str, torch.Tensor]:
@@ -40,7 +40,7 @@ class ChunkSparsityAccumulator:
         Returns:
             dict: {field_name: avg_abs_offset (D,)}
         """
-        assert self._sample_count !=0, "No sampels were added to the accumulator"
+        assert self._sample_count !=0, "No samples were added to the accumulator"
 
         return{field: total/ self._sample_count for field, total in self._sum_by_field.items()}
 
