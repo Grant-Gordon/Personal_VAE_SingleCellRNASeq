@@ -276,3 +276,30 @@ def log_l2_penalty(
     if total_loss.item() > 0:
         frac = l2_penalty.item() / total_loss.item()
         writer.add_scalar("loss/l2_frac_of_total", frac, global_step)
+
+def log_metadata_field_sparsity(
+    writer: SummaryWriter,
+    avg_abs_offsets_dict: dict[str, torch.Tensor],
+    global_timestep: int
+) -> None:
+    """
+    Logs per-field sparsity histograms showing how strongly each metadata field
+    affects each latent dimension. Assumes input has been averaged over the chunk.
+
+    Each histogram:
+      - x-axis: latent dimension index (1 to D)
+      - y-axis: mean absolute offset magnitude
+
+    Args:
+        writer (SummaryWriter): TensorBoard writer
+        avg_abs_offsets_dict (dict): {field_name: (D,) tensor of averaged |offset|}
+        global_timestep (int): Global step (typically end of last chunk in epoch)
+    """
+    for field, avg_abs in avg_abs_offsets_dict.items():
+        assert isinstance(avg_abs, torch.Tensor) or avg_abs.ndim != 1, "Assert Error: Expected avg_abs in avg_abs_offset_dict to be type torch.Tensor"
+
+        writer.add_histogram(
+            tag=f"metadata_sparsity_latent/{field}",
+            values=avg_abs,
+            global_step=global_timestep
+        )

@@ -6,6 +6,7 @@ import pickle
 from queue import Queue
 from dataloader.preloader import start_preload_workers
 import utils.logging_helpers as logging
+import utils.chunk_sparsity_accumulator as chunk_sparsity_accumulator
 from dataloader.loader import create_chunks_dataset, create_dataloader
 from models.conditional_vae import ConditionalVAE
 import torch.nn as nn
@@ -18,6 +19,7 @@ class Trainer:
         self.config = config
         self.current_epoch = -1
         self.global_timestep = -1
+        self.sparse_accumulator = None
 
         self.device = torch.device(config['training'].get('device','cuda'))
 
@@ -79,6 +81,7 @@ class Trainer:
         for epoch in range(num_epochs):
             epoch_start = time.time()
             self.current_epoch = epoch
+            self.sparse_accumulator = None
             print(f"Beginning epoch {self.current_epoch}")
 
             #queue chunk idxs for the epoch
@@ -100,7 +103,11 @@ class Trainer:
                 chunk_load_times.append(chunk_load_time)
                 
                 self.global_timestep +=1
-                chunk_loss, chunk_kl, chunk_recon, chunk_l2_penalty, bt, ct, model_out = self.train_chunk(loader)
+                #If last chunk in training, generate sparse histogram for metadata
+                if chunk_idx == len(self.chunks_dataset) -1 and epoch == num_epochs -1:
+                    self.sparse_accumulator = chunk_sparsity_accumulator.ChunkSparsityAccumulator()
+            
+                chunk_loss, chunk_kl, chunk_recon, chunk_l2_penalty, bt, ct, model_out = self.train_chunk(loader, self.sparse_accumulator)
                 epoch_loss.append(chunk_loss)
                 epoch_kl.append(chunk_kl)
                 epoch_recon.append(chunk_recon)
@@ -171,6 +178,10 @@ class Trainer:
         total_train_time = time.time() - total_train_time_start
         print(f"Finished training")
 
+        assert self.sparse_accumulator is not None, "Assert Error: xpected self.sparse_acculuator to be assigned by end of training. Instead is None"
+        avg_abs_offsets = self.sparse_accumulator.finalize()
+        logging.log_metadata_field_sparsity(self.tbWriter, avg_abs_offsets, self.global_timestep)
+    
         logging.log_final_training_summary(
              writer=self.tbWriter,
             total_wall_time=total_train_time,
@@ -187,7 +198,7 @@ class Trainer:
         self.tbWriter.close()
         self.log_file.close()
 
-    def train_chunk(self, loader):
+    def train_chunk(self, loader,sparsity_accumulator: chunk_sparsity_accumulator.ChunkSparsityAccumulator | None = None):
         self.model.train()
         chunk_total_loss, chunk_total_kl, chunk_total_recon, chunk_total_l2_loss = 0,0,0,0
         batch_times, creation_times = [],[]
@@ -208,6 +219,9 @@ class Trainer:
             offsets_dict = model_out["offsets"]
             z_star = model_out["z_star_raw"]
             z_expr = model_out["z_expr"]
+
+            if sparsity_accumulator:
+                sparsity_accumulator.update(offsets_dict=offsets_dict)
 
             loss_dict = self.model.compute_total_loss( 
                 recon=reconstructed,
