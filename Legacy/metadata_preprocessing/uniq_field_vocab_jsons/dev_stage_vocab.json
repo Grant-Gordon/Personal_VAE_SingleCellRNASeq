@@ -1,0 +1,10 @@
+{
+  "<UNK>": 0,
+  "embryonic": 1,
+  "fetal": 2,
+  "immature": 3,
+  "late_adult": 4,
+  "middle_adult": 5,
+  "unknown": 6,
+  "young_adult": 7
+}
