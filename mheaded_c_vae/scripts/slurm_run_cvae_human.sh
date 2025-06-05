@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=l2_penalty_beta
+#SBATCH --job-name=l2_penalty_10_epoch
 #SBATCH --output=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.out
 #SBATCH --error=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs/Job_%j-%x/%x.err
-#SBATCH --time=1:00:00
+#SBATCH --time=8:00:00
 #SBATCH --gpus-per-node=1
 #SBATCH --mem-per-gpu=32G
 
