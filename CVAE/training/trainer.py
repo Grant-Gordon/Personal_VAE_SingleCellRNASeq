@@ -256,6 +256,6 @@ class Trainer:
 
 
     def save_model(self):
-        path = os.path.join(self.config['training']['output_dir'], "vae_model.pth")
+        path = os.path.join(self.config['training']['output_dir'], "cvae_model.pth")
         torch.save(self.model.state_dict(), path)
         print(f"Model saved to {path}")

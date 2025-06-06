@@ -7,7 +7,7 @@
 #SBATCH --mem-per-gpu=32G
 
 GIT_ROOT_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq"
-PROJECT_ROOT_DIR="${GIT_ROOT_DIR}/mheaded_c_vae"
+PROJECT_ROOT_DIR="${GIT_ROOT_DIR}/CVAE"
 DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/subset" #Use "july2024_census_data/subset" for 3_mil samples use "july2024_census_data/full" for full 16 mill census data
 OUTPUT_DIR="${PROJECT_ROOT_DIR}/JobOutputs/Job_${SLURM_JOB_ID}-${SLURM_JOB_NAME}"
 CONFIG_PATH="${PROJECT_ROOT_DIR}/configs/train_human_cvae.yaml"
