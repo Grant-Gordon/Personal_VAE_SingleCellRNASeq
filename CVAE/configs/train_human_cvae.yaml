@@ -1,5 +1,5 @@
 training:
-  epochs: 1
+  epochs: 5
   batch_size: 128
   lr: 0.001
   output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
