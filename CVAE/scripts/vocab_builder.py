@@ -27,7 +27,7 @@ def build_vocab(config):
             return vocab_path
         else:
             print(f"#############################################################\n"
-                  "WARNING: Existing vocab file at '{vocab_path} does not match desired fields in config. REBUILDING...\n"
+                  f"WARNING: Existing vocab file at '{vocab_path}' does not match desired fields in config. REBUILDING...\n"
                   "#############################################################\n")
     
     field_values = defaultdict(set)
