@@ -276,32 +276,6 @@ def log_l2_penalty(
         frac = l2_penalty.item() / total_loss.item()
         writer.add_scalar("loss/l2_frac_of_total", frac, global_step)
 
-# def log_metadata_field_sparsity(
-#     writer: SummaryWriter,
-#     avg_abs_offsets_dict: dict[str, torch.Tensor],
-#     global_timestep: int
-# ) -> None:
-#     """
-#     Logs per-field sparsity histograms showing how strongly each metadata field
-#     affects each latent dimension. Assumes input has been averaged over the chunk.
-
-#     Each histogram:
-#       - x-axis: latent dimension index (1 to D)
-#       - y-axis: mean absolute offset magnitude
-
-#     Args:
-#         writer (SummaryWriter): TensorBoard writer
-#         avg_abs_offsets_dict (dict): {field_name: (D,) tensor of averaged |offset|}
-#         global_timestep (int): Global step (typically end of last chunk in epoch)
-#     """
-#     for field, avg_abs in avg_abs_offsets_dict.items():
-#         assert isinstance(avg_abs, torch.Tensor) or avg_abs.ndim != 1, "Assert Error: Expected avg_abs in avg_abs_offset_dict to be type torch.Tensor"
-
-#         writer.add_histogram(
-#             tag=f"metadata_sparsity_latent/{field}",
-#             values=avg_abs,
-#             global_step=global_timestep
-#         )
 
 
 
@@ -336,3 +310,22 @@ def log_metadata_field_sparsity(
 
         writer.add_figure(f"metadata_sparsity_latent/{field}", fig, global_step=global_timestep)
         plt.close(fig)  # cleanup to avoid memory leaks
+
+
+def log_gene_expr_sparsity(
+        writer: SummaryWriter,
+        ave_chunk_z: torch.Tensor,
+        global_timestep: int,
+) -> None:
+    assert isinstance(ave_chunk_z, torch.Tensor) and ave_chunk_z.ndim == 1,  f"Expected 1D torch.Tensor for gx_z'"
+
+    fig, ax = plt.subplots(figsize=(6, 3))
+    ax.bar(range + 1, len(ave_chunk_z +1), ave_chunk_z).cpu().numpy()
+    ax.set_title(f"Sparsity of GeneExpression_offsets")
+    ax.set_xlabel("Latent Dimension")
+    ax.set_ylabel("mean value of final chunk")
+    ax.set_xticks(range(0, len(ave_chunk_z) +1, max(1, len(ave_chunk_z) // 8)))
+
+    writer.add_figure("metadata_sparsity_lantent/gene_expr", fig, global_timestep=global_timestep)
+    plt.close(fig)
+
