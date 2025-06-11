@@ -58,4 +58,4 @@ class ChunkSparsityAccumulator:
         """Clears all internal state."""
         self._sum_by_field.clear()
         self._sample_count = 0
-        self._gene_expr_sum -= self._gene_expr_sum #TODO this might not be right
+        self._gene_expr_sum =None #TODO this might not be right
