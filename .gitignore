@@ -32,7 +32,7 @@ metadata_preprocessing/uniq_field_vocab_jsons
 
 #  mhcvae           #
 #####################
-CVAE/preprocessed_data 
+CVAE/preprocessed_data/
 CVAE/JobOutputs
 CVAE/configs/*
 !CVAE/configs/sample_training_config.yaml
