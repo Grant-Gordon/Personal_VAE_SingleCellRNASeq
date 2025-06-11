@@ -180,9 +180,10 @@ class Trainer:
         print(f"Finished training")
 
         assert self.sparse_accumulator is not None, "Assert Error: xpected self.sparse_acculuator to be assigned by end of training. Instead is None"
-        avg_abs_offsets = self.sparse_accumulator.finalize()
+        avg_abs_offsets, avg_abs_gene_expr = self.sparse_accumulator.finalize()
         logging.log_metadata_field_sparsity(self.tbWriter, avg_abs_offsets, self.global_timestep)
-    
+        logging.log_gene_expr_sparsity(writer=self.tbWriter, ave_chunk_z=avg_abs_gene_expr, global_timestep=self.global_timestep)
+        
         logging.log_final_training_summary(
              writer=self.tbWriter,
             total_wall_time=total_train_time,
@@ -222,7 +223,7 @@ class Trainer:
             z_expr = model_out["z_expr"]
 
             if sparsity_accumulator:
-                sparsity_accumulator.update(offsets_dict=offsets_dict)
+                sparsity_accumulator.update(offsets_dict=offsets_dict, gene_expr_z=z_expr)
 
             loss_dict = self.model.compute_total_loss( 
                 recon=reconstructed,
