@@ -1,0 +1,42 @@
+#       images      #
+#####################
+*.jpg
+
+
+#       binaries    #
+#####################
+**/__pycache__/
+*.pyc
+
+#       venvs       #
+#####################
+personalVAEenv/*
+
+#logs/experiment-dependant#
+#####################
+*.log
+**/JobOutputs/
+*submit*.sh
+#       fafo's      #
+#####################
+**/fafo.py
+**/*fafo*.py
+TODO.txt
+
+#  metadata preproc #
+#####################
+metadata_preprocessing/encoded_metadata_files
+metadata_preprocessing/JobOutputs
+metadata_preprocessing/submit*.sh
+metadata_preprocessing/uniq_field_vocab_jsons
+
+#  mhcvae           #
+#####################
+CVAE/preprocessed_data 
+CVAE/JobOutputs
+CVAE/configs/*
+!CVAE/configs/sample_training_config.yaml
+CVAE/scripts/slurm_run_cvae_human.sh
+#  Lgacy           #
+#####################
+Legacy/

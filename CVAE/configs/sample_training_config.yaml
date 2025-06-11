@@ -2,21 +2,22 @@ training:
   epochs: 1
   batch_size: 128
   lr: 0.001
-  output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/JobOutputs
+  output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
   device: cuda
+  lambda_l2_penalty: 0.001
 
 data:
   data_dir: /mnt/projects/debruinz_project/july2024_census_data/subset
   species: human
   chunks_preloaded: 1
   num_preloader_threads: 1
-  vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/preprocessed_data/
+  vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/
 
 model:
   type: conditional_vae
   latent_dim: 128
 
-metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/mheaded_c_vae/preprocessed_data/human_vocab_dict.pkl
+metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/human_vocab_dict.pkl
 
 metadata_fields:
   assay:
@@ -25,26 +26,27 @@ metadata_fields:
     type: IGNORE
   cell_type:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   cell_type_ontology_term_id:
     type: IGNORE
   dataset_id:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   dev_stage:
     type: onehot
   development_stage:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   development_stage_ontology_term_id:
     type: IGNORE
   disease:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   disease_ontology_term_id:
     type: IGNORE
   donor_id:
-    type: IGNORE
+    type: embedding
+    embedding_dim: 128
   is_primary_data:
     type: IGNORE
   n_measured_vars:
@@ -61,7 +63,7 @@ metadata_fields:
     type: IGNORE
   self_reported_ethnicity:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   self_reported_ethnicity_ontology_term_id:
     type: IGNORE
   sex:
@@ -74,10 +76,10 @@ metadata_fields:
     type: onehot
   tissue:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   tissue_general:
     type: embedding
-    embedding_dim: 32
+    embedding_dim: 128
   tissue_general_ontology_term_id:
     type: IGNORE
   tissue_ontology_term_id:

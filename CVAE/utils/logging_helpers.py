@@ -320,12 +320,12 @@ def log_gene_expr_sparsity(
     assert isinstance(ave_chunk_z, torch.Tensor) and ave_chunk_z.ndim == 1,  f"Expected 1D torch.Tensor for gx_z'"
 
     fig, ax = plt.subplots(figsize=(6, 3))
-    ax.bar(range + 1, len(ave_chunk_z +1), ave_chunk_z).cpu().numpy()
+    ax.bar(range(1, len(ave_chunk_z) + 1), ave_chunk_z.cpu().numpy())
     ax.set_title(f"Sparsity of GeneExpression_offsets")
     ax.set_xlabel("Latent Dimension")
     ax.set_ylabel("mean value of final chunk")
     ax.set_xticks(range(0, len(ave_chunk_z) +1, max(1, len(ave_chunk_z) // 8)))
 
-    writer.add_figure("metadata_sparsity_lantent/gene_expr", fig, global_timestep=global_timestep)
+    writer.add_figure("metadata_sparsity_latent/gene_expr", fig, global_step=global_timestep)
     plt.close(fig)
 

@@ -33,7 +33,7 @@ class ChunkSparsityAccumulator:
                 self._sum_by_field[field] += abs_sum_meta
         
         assert gene_expr_z.dtype.is_floating_point, "Assert Error: expected floating point"
-        abs_sum_gx = gene_expr_z.detach().abs.sum(dim=0) #(D,)
+        abs_sum_gx = gene_expr_z.detach().abs().sum(dim=0) #(D,)
         
         if self._gene_expr_sum == None: #TODO confirm logic 
             self._gene_expr_sum = abs_sum_gx
