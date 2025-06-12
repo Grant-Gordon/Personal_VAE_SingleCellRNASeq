@@ -1,12 +1,13 @@
 import os
 import yaml
+from utils.config_parser import load_yaml_config
 from typing import Dict, List, Tuple, Optional
 
 
 def normalize_field_name(name:str) -> str:
     return name.strip().lower().replace("_", "")
 
-def extract_metadata_fields(cvae_config: dict) -> Tuple[List[str], List[str]]:
+def extract_cvae_metadata_fields(cvae_config: dict) -> Tuple[List[str], List[str]]:
     fields  = []
     ignored = []
     for field, spec in cvae_config.get("metadata_fields", {}).items(): #TODO spec why not config[metadata][type]
@@ -23,14 +24,22 @@ def extract_metadata_fields(cvae_config: dict) -> Tuple[List[str], List[str]]:
                 fields.append(norm)
     return fields, ignored
 
-def validate_cvae_config(config:dict) -> None:
-    required_keys = ["input_dim", "laten_dim", "metadata_fields", "batch_size"]
-    for key in required_keys:
-        if key not in config:
-            raise ValueError(f"Missing required key in CVAE config:'{key}")
-        
-    if not isinstance(config["metadata_fields"], list):
-        raise TypeError("'metadata_fields' should be a list of strings")
 
+def validate_cvae_config(config: dict) -> None:
+    if (
+        "training" not in config
+        or "batch_size" not in config["training"]
+        or "lr" not in config["training"]
+        or "output_dir" not in config["training"]
+        or "device" not in config["training"]
+        or "lambda_l2_penalty" not in config["training"]
+    ):
+        raise ValueError("It is advised to include the following yaml config 'training:\n\tepochs:\n\tbatch_size\n\tdevice:\n\tlambda_l2_penalty:"
+        "One or more of these fields were configured incorrectly"
+        "\n This code has defaults in place for some of these values though it is not guranteed for all scinarios")
 
-    
+    if "metadata_fields" not in config or not isinstance(config["metadata_fields"], dict):
+        raise ValueError("CVAE config must include a 'metadata_fields' dictionary.")
+
+    if "metadata_vobab" not in config or not isinstance(config["metadata_vocab"], str):
+        raise ValueError("CVAE config requries")
