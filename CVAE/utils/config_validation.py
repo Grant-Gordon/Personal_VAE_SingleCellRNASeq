@@ -27,7 +27,7 @@ def extract_cvae_metadata_fields(cvae_config: dict) -> Tuple[List[str], List[str
 
 def validate_cvae_config(config: dict) -> None:
     if (
-        "training" not in config
+        "training" not in config or not isinstance(config["training"], dict)
         or "batch_size" not in config["training"]
         or "lr" not in config["training"]
         or "output_dir" not in config["training"]
@@ -36,10 +36,73 @@ def validate_cvae_config(config: dict) -> None:
     ):
         raise ValueError("It is advised to include the following yaml config 'training:\n\tepochs:\n\tbatch_size\n\tdevice:\n\tlambda_l2_penalty:"
         "One or more of these fields were configured incorrectly"
-        "\n This code has defaults in place for some of these values though it is not guranteed for all scinarios")
+        "\n This code has defaults in place for some of these values though it is not guranteed for all scenarios")
 
     if "metadata_fields" not in config or not isinstance(config["metadata_fields"], dict):
         raise ValueError("CVAE config must include a 'metadata_fields' dictionary.")
+    
+    if (   
+        "data" not in config or not isinstance(config["data"], dict)
+        or "data_dir" not in config["data"]
+        or "species" not in config["data"]
+        or "chunks_preloaded" not in config["data"]
+        or "num_preloader_threads" not in config["data"]
+        or "vocab_builder_out" not in config["data"]
+    ):
+        raise ValueError("It is advised to inclued the following yaml config "
+        "'data:\n\tdata_dir:\n\tspecies:\n\tchunks_preloaded:\n\tnum_preloader_threads:\n\tvocab_builder_out:'"
+        "\n This code has defualts in place for some of these values though it is not guranteed for all scenarios")
+    
+    #TODO confirm that config parser returns (key, None) for blank config fields
+def validate_discriminator_config(discr_config: dict, cvae_config: dict) -> None:
+    
+    #Syntax check/ Confirm all fields exist
+    if (
+        "source_cvae" not in discr_config or not isinstance(discr_config["source_cvae"], dict)
+        or"train_with_pretrained_cvae" not in discr_config["source_cvae"]
+        or "cvae_checkpoint_path" not in discr_config["source_cvae"]
+        or "cvae_config_path" not in discr_config["source_cvae"]
+    ):
+        raise ValueError("It is advised to inclued the following yaml config "
+        "'source_cvae:\n\train_with_pretrained_cvae:\n\tcvae_checkpoint_path:\n\tcvae_config_path:'"
+        "\n This code has defualts in place for some of these values though it is not guranteed for all scenarios")
 
-    if "metadata_vobab" not in config or not isinstance(config["metadata_vocab"], str):
-        raise ValueError("CVAE config requries")
+    if(
+        "discriminator_architecture" not in discr_config or not isinstance(discr_config["discriminator_architecture"], dict)
+        or "hidden_dim" not in discr_config["discriminator_architecture"]
+        or "dropout" not in discr_config["discriminator_architecture"]
+        or "activation" not in discr_config["discriminator_architecture"]
+        or "learning_rate"  not in discr_config["discriminator_architecture"]
+    ):
+         raise ValueError("It is advised to inclued the following yaml config "
+        "'discriminator_architecture:\n\thidden_dim:\n\tdropout:\n\tactivation:\n\tlearning_rate:\n'"
+        "This code has defualts in place for some of these values though it is not guranteed for all scenarios")
+    if(
+        "fields_to_change" not in discr_config or not isinstance(discr_config["fields_to_change"], dict)
+    ):
+        raise ValueError("config 'fields_to_change(dict)' is required but was not included. \nFor strictly trans generation leave this field blank")
+    
+
+    #Semantic checks
+    #No pretrained but paths
+    if(
+        discr_config["source_cvae"]["train_with_pretrained_cvae"] == False and 
+        (discr_config["source_cvae"]["cvae_checkpoint_path"] is not None or discr_config["source_cvae"]["cvae_config_path"] is not None)
+    ):
+        raise ValueError("Spec 'train_with_pretrained_cvae' was False, but values were provided for pretrained CVAE paths.\n"
+            "These are mutually exclusive specs. 'cvae_checkpoint_path' and 'cvae_config_path' should be left empty")
+
+    #Pretrained but No paths    
+    if(
+        discr_config["source_cvae"]["train_with_pretrained_cvae"] == True and 
+        (discr_config["source_cvae"]["cvae_checkpoint_path"] is None or discr_config["source_cvae"]["cvae_config_path"] is None)
+    ):
+        raise ValueError("Spec 'train_with_pretrained_cvae' was True but not paths were specified for the pretrained CVAE\n")
+    
+    #Warn about mismatching fields:
+    for field in cvae_config["metadtata_fields"]:
+        if field["type"] != "IGNORE": #compare changed fields against cvae meta fields
+            if field not in discr_config["fields_to_change"].items(): #TODO field probably dict not str maybe cant compare to fields lsit in discr
+                print(f"WARNING: Field '{field}' is not included in discriminator config but used in CVAE training.\n Trans samples for field '{field} will not be generated\n")
+        elif field in discr_config["fields_to_change"]:
+            raise ValueError(f"CVAE config has field '{field}' set to 'IGNORE' but the discriminator config contains field '{field}' in key 'fields_to_change\n'")
