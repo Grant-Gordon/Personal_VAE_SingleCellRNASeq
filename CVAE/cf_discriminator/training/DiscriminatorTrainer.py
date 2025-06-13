@@ -24,11 +24,12 @@ class DiscriminatorTrainer:
 
         #TODO
         self.config = config
-        self.discr_model = config[""]
         self.vocab = config[""]
         self.metadata_classes = config[""]
         self.device = config[""]
         #load and configure model
+        self.discr_model = #TODO
+
 
         #if train on live CVAE
         if live_cvae is not None: 

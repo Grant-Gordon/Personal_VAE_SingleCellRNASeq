@@ -44,7 +44,7 @@ class ConditionalVAE(nn.Module):
                     nn.Linear(latent_dim, latent_dim)
                 )
             elif strategy["type"] == "onehot":
-                num_classes = len(vocab_dict[field]) #TODO
+                num_classes = len(vocab_dict[field]) #//TODO: 
                 self.metadata_heads[field] = nn.Sequential(
                     nn.Linear(num_classes, latent_dim),
                     nn.ReLU(),
