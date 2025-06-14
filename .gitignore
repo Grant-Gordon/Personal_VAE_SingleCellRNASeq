@@ -16,7 +16,9 @@ personalVAEenv/*
 #####################
 *.log
 **/JobOutputs/
-*submit*.sh
+**/*submit*.sh
+**/*submission*.sh
+!**/sample_slurm_submission.sh
 #       fafo's      #
 #####################
 **/fafo.py
