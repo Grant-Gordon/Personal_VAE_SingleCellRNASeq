@@ -9,8 +9,9 @@ from typing import Dict
 class Discriminator(nn.Module):
     def __init__(
         self,
-        config: dict,
-        metadata_classes_per_field: Dict[str, int]
+        config: dict, #TODO match config 
+        metadata_classes_per_field: Dict[str, int],
+        expr_dim: int
     ) -> None:
         """
         Discriminator model for evaluating CVAE-generated samples.
@@ -22,7 +23,7 @@ class Discriminator(nn.Module):
         """
         super().__init__()
 
-        input_dim = config["input_dim"]
+        input_dim = expr_dim
         hidden_dim = config["hidden_dim"]
         dropout = config.get("dropout", 0.0)
         activation_fn = self._get_activation(config.get("activation", "relu"))

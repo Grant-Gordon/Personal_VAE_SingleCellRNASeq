@@ -13,7 +13,8 @@ import torch.nn as nn
 import torch.optim as optim
 import threading
 from typing import Optional
-
+import yaml
+from cf_discriminator.training.DiscriminatorTrainer import DiscriminatorTrainer
 
 class Trainer:
     def __init__(self, config):
@@ -23,6 +24,14 @@ class Trainer:
         self.sparse_accumulator = None
 
         self.device = torch.device(config['training'].get('device','cuda'))
+       
+        #init discriminator (optional)
+        if config.get("discriminator", {}).get("enable", False):
+            with open(config["Discriminator"]["config_path"], "r") as f:
+                discrim_config = yaml.safe_load(f)
+            self.discriminator = DiscriminatorTrainer(discrim_config, live_cvae=self.model)
+        else:
+            self.discriminator = None
 
         #init dataset and preload queeus
         self.chunks_dataset = create_chunks_dataset(
@@ -49,11 +58,11 @@ class Trainer:
 
 
         #dynamically get input size from first chunk
-        counts_file, metadta_file = self.chunks_dataset[0]
+        counts_file, metadata_file = self.chunks_dataset[0]
         first_loader = create_dataloader(  
             config["data"]["data_dir"],
             counts_file,
-            metadta_file,
+            metadata_file,
             batch_size = 1,
             config=config
         )
@@ -78,12 +87,17 @@ class Trainer:
     def train(self):
         total_train_time_start = time.time()
         num_epochs = self.config['training']['epochs']
-       
+        train_discr = False
+
         for epoch in range(num_epochs):
             epoch_start = time.time()
             self.current_epoch = epoch
             self.sparse_accumulator = None
             print(f"Beginning epoch {self.current_epoch}")
+
+            #Train Discriminator on last N epochs
+            if num_epochs - self.current_epoch <= self.discriminator.config["training"]["train_last_n_epochs"]:
+                train_discr = True
 
             #queue chunk idxs for the epoch
             for idx in range(len(self.chunks_dataset)):
@@ -108,7 +122,7 @@ class Trainer:
                 if chunk_idx == len(self.chunks_dataset) -1 and epoch == num_epochs -1:
                     self.sparse_accumulator = chunk_sparsity_accumulator.ChunkSparsityAccumulator()
             
-                chunk_loss, chunk_kl, chunk_recon, chunk_l2_penalty, bt, ct, model_out = self.train_chunk(loader, self.sparse_accumulator)
+                chunk_loss, chunk_kl, chunk_recon, chunk_l2_penalty, bt, ct, model_out = self.train_chunk(loader=loader,train_discr=train_discr, sparsity_accumulator=self.sparse_accumulator)
                 epoch_loss.append(chunk_loss)
                 epoch_kl.append(chunk_kl)
                 epoch_recon.append(chunk_recon)
@@ -200,7 +214,7 @@ class Trainer:
         self.tbWriter.close()
         self.log_file.close()
 
-    def train_chunk(self, loader,sparsity_accumulator: Optional[chunk_sparsity_accumulator.ChunkSparsityAccumulator] = None):
+    def train_chunk(self, loader, train_discr: bool, sparsity_accumulator: Optional[chunk_sparsity_accumulator.ChunkSparsityAccumulator] = None):
         self.model.train()
         chunk_total_loss, chunk_total_kl, chunk_total_recon, chunk_total_l2_loss = 0,0,0,0
         batch_times, creation_times = [],[]
@@ -221,6 +235,10 @@ class Trainer:
             offsets_dict = model_out["offsets"]
             z_star = model_out["z_star_raw"]
             z_expr = model_out["z_expr"]
+
+            #Pipe outputs into discriminator training #TODO currently training on every batch, set to only final few epochs
+            if self.discriminator and train_discr:
+                self.discriminator.train_on_batch(expr=z_star, metadata=metadata_batch)
 
             if sparsity_accumulator:
                 sparsity_accumulator.update(offsets_dict=offsets_dict, gene_expr_z=z_expr)
@@ -257,6 +275,6 @@ class Trainer:
 
 
     def save_model(self):
-        path = os.path.join(self.config['training']['output_dir'], "cvae_model.pth")
-        torch.save(self.model.state_dict(), path)
+        path = os.path.join(self.config['training']['output_dir'], "cvae_full_model.pth")
+        torch.save(self.model, path)
         print(f"Model saved to {path}")

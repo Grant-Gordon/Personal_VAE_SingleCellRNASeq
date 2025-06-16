@@ -1,6 +1,5 @@
 # config/discriminator_config.yaml
 
-# === CVAE Source ===
 source_cvae:
   train_with_pretrained_cvae: false
   cvae_checkpoint_path: 
@@ -11,18 +10,15 @@ discriminator_architecture:
   hidden_dim: 128
   dropout: 0.1
   activation: relu
-  learning_rate: 0.001
 
 # === Metadata Mutation === #TODO match with cvae config meta fields?
 fields_to_change:
   - cell_type
   - sex
 
-# # === Training Behavior ===
-# track_transitions: true
-# device: cuda               # or 'cpu'
+training:
+  device: cuda
+  learning_rate: 0.001
+  freeze_cvae: false
+  train_last_n_epochs: 2
 
-# # === Logging ===
-# log_interval: 10
-# save_checkpoints: true
-# save_path: /path/to/discriminator_checkpoints/
