@@ -24,9 +24,9 @@ class Discriminator(nn.Module):
         super().__init__()
 
         input_dim = expr_dim
-        hidden_dim = config["hidden_dim"]
-        dropout = config.get("dropout", 0.0)
-        activation_fn = self._get_activation(config.get("activation", "relu"))
+        hidden_dim = config["discriminator_architecture"]["hidden_dim"]
+        dropout = config.get("discriminator_architecture", {}).get("dropout", 0.0)
+        activation_fn = self._get_activation(config.get("discriminator_architecture", {}).get("activation", "relu"))
 
         self.shared_encoder = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),

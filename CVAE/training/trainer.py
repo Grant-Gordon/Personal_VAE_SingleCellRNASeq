@@ -24,15 +24,7 @@ class Trainer:
         self.sparse_accumulator = None
 
         self.device = torch.device(config['training'].get('device','cuda'))
-       
-        #init discriminator (optional)
-        if config.get("discriminator", {}).get("enable", False):
-            with open(config["Discriminator"]["config_path"], "r") as f:
-                discrim_config = yaml.safe_load(f)
-            self.discriminator = DiscriminatorTrainer(discrim_config, live_cvae=self.model)
-        else:
-            self.discriminator = None
-
+    
         #init dataset and preload queeus
         self.chunks_dataset = create_chunks_dataset(
             config["data"]["data_dir"],
@@ -83,6 +75,13 @@ class Trainer:
         
         self.optimizer = optim.Adam(self.model.parameters(), lr = config["training"]["lr"])
 
+        #init discriminator (optional with config)
+        if config.get("discriminator", {}).get("enable", False):
+            with open(config["discriminator"]["config_path"], "r") as f:
+                discrim_config = yaml.safe_load(f) #TODO check if I want to import util.config_parser
+            self.discriminator = DiscriminatorTrainer(discrim_config, live_cvae=self.model)
+        else:
+            self.discriminator = None
 
     def train(self):
         total_train_time_start = time.time()
@@ -95,9 +94,16 @@ class Trainer:
             self.sparse_accumulator = None
             print(f"Beginning epoch {self.current_epoch}")
 
-            #Train Discriminator on last N epochs
+            #Train Discriminator on last N epochs and freeze cvae parameters
             if num_epochs - self.current_epoch <= self.discriminator.config["training"]["train_last_n_epochs"]:
                 train_discr = True
+                if self.discriminator.config["training"].get("freeze_cvae", False):
+                    print(f"[Epoch {epoch}] Freezing CVAE parameters for discriminator training.")
+                    for param in self.model.parameters():
+                        param.requires_grad = False
+                else:
+                    for param in self.model.parameters():
+                        param.requires_grad = True
 
             #queue chunk idxs for the epoch
             for idx in range(len(self.chunks_dataset)):
@@ -236,7 +242,7 @@ class Trainer:
             z_star = model_out["z_star_raw"]
             z_expr = model_out["z_expr"]
 
-            #Pipe outputs into discriminator training #TODO currently training on every batch, set to only final few epochs
+            #Pipe outputs into discriminator training 
             if self.discriminator and train_discr:
                 self.discriminator.train_on_batch(expr=z_star, metadata=metadata_batch)
 

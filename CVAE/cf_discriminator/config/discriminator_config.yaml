@@ -11,7 +11,7 @@ discriminator_architecture:
   dropout: 0.1
   activation: relu
 
-# === Metadata Mutation === #TODO match with cvae config meta fields?
+# === Metadata Mutation === 
 fields_to_change:
   - cell_type
   - sex
@@ -21,4 +21,4 @@ training:
   learning_rate: 0.001
   freeze_cvae: false
   train_last_n_epochs: 2
-
+  track_transitions: true

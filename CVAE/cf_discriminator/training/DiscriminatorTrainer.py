@@ -27,6 +27,13 @@ class DiscriminatorTrainer:
         else:
             self.cvae = live_cvae
 
+        #Freeze weights
+        if self.freeze_cvae:
+            print("[DiscriminatorTrainer] Freezing CVAE weights.")
+            for param in self.cvae.parameters():
+                param.requires_grad = False
+
+
         self.expr_dim = self.cvae.input_dim
         self.vocab_dict = self.cvae.vocab_dict
         self.metadata_fields_dict = self.cvae.metadata_fields_dict
@@ -41,7 +48,7 @@ class DiscriminatorTrainer:
             expr_dim=self.expr_dim
         ).to(self.device)
 
-        self.optimizer = torch.optim.Adam(self.discr_model.parameters(), lr=self.config["discriminator_architecture"]["learning_rate"])
+        self.optimizer = torch.optim.Adam(self.discr_model.parameters(), lr=self.config["training"]["learning_rate"])
 
     
     def train_on_batch(self, expr:torch.Tensor, metadata:dict[str, torch.Tensor]) -> dict:
@@ -57,7 +64,7 @@ class DiscriminatorTrainer:
 
 
         #######FORWARD#########
-        with torch.no_grad if self.freeze_cvae else torch.enable_grad():
+        with (torch.no_grad() if self.freeze_cvae else torch.enable_grad()):
             gx_hat_cis = self.cvae(expr,metadata)
 
         ######GEN TRANS #########
@@ -121,60 +128,63 @@ class DiscriminatorTrainer:
             "losses_by_field": losses_by_field,
             "transitions": transition_stats
         }
-        
-def train_using_pretrained_cvae(self) -> None:
-    """
-    Trains the discriminator using a pretrained (frozen) CVAE.
-    Loads expression and metadata from disk chunk-by-chunk and calls train_on_batch.
-    """
-    from dataloader.loader import create_chunks_dataset
-    from dataloader.preloader import start_preload_workers
-    from queue import Queue
-    import threading
-    import time
+            
+    def train_using_pretrained_cvae(self) -> None:
+        """
+        Trains the discriminator using a pretrained (frozen) CVAE.
+        Loads expression and metadata from disk chunk-by-chunk and calls train_on_batch.
+        """
+        from dataloader.loader import create_chunks_dataset
+        from dataloader.preloader import start_preload_workers
+        from queue import Queue
+        import threading
+        import time
+        from utils.config_parser import parse_config
 
-    self.chunks_dataset = create_chunks_dataset(
-        self.config["data"]["data_dir"],
-        self.config["data"]["species"]
-    )
-    self.preload_buffer = {}
-    self.buffer_lock = threading.Lock()
-    self.chunk_queue = Queue()
+        cvae_config = parse_config(self.config["source_cvae"]["cvae_config_path"])
 
-    start_preload_workers(
-        dataset=self.chunks_dataset,
-        data_dir=self.config["data"]["data_dir"],
-        batch_size=self.config["training"]["batch_size"],
-        num_threads=self.config["data"]["num_preloader_threads"],
-        preload_buffer=self.preload_buffer,
-        buffer_lock=self.buffer_lock,
-        chunk_queue=self.chunk_queue,
-        config=self.config
-    )
+        self.chunks_dataset = create_chunks_dataset(
+            cvae_config["data"]["data_dir"],
+            cvae_config["data"]["species"]
+        )
+        self.preload_buffer = {}
+        self.buffer_lock = threading.Lock()
+        self.chunk_queue = Queue()
 
-    num_epochs = self.config["training"]["epochs"]
+        start_preload_workers(
+            dataset=self.chunks_dataset,
+            data_dir=cvae_config["data"]["data_dir"],
+            batch_size=cvae_config["training"]["batch_size"],
+            num_threads=cvae_config["data"]["num_preloader_threads"],
+            preload_buffer=self.preload_buffer,
+            buffer_lock=self.buffer_lock,
+            chunk_queue=self.chunk_queue,
+            config=cvae_config
+        )
 
-    for epoch in range(num_epochs):
-        print(f"\n[DiscriminatorTrainer] Epoch {epoch + 1}/{num_epochs}")
+        num_epochs = self.config["training"]["train_last_n_epochs"]
 
-        for chunk_idx in range(len(self.chunks_dataset)):
-            start_time_waiting_for_chunk = time.time()
-            while True:
-                with self.buffer_lock:
-                    if chunk_idx in self.preload_buffer:
-                        loader, chunk_load_time = self.preload_buffer.pop(chunk_idx)
-                        break
-                if time.time() - start_time_waiting_for_chunk > 60:
-                    raise TimeoutError(f"Chunk {chunk_idx} not found in buffer after 60 seconds.")
-                time.sleep(0.1)
+        for epoch in range(num_epochs):
+            print(f"\n[DiscriminatorTrainer] Epoch {epoch + 1}/{num_epochs}")
 
-            print(f"  [Chunk {chunk_idx}] Loaded in {chunk_load_time:.2f}s")
+            for chunk_idx in range(len(self.chunks_dataset)):
+                start_time_waiting_for_chunk = time.time()
+                while True:
+                    with self.buffer_lock:
+                        if chunk_idx in self.preload_buffer:
+                            loader, chunk_load_time = self.preload_buffer.pop(chunk_idx)
+                            break
+                    if time.time() - start_time_waiting_for_chunk > 60:
+                        raise TimeoutError(f"Chunk {chunk_idx} not found in buffer after 60 seconds.")
+                    time.sleep(0.1)
 
-            for batch_idx, batch in enumerate(loader):
-                expr = batch["expr"]
-                metadata = batch["metadata"]
+                print(f"  [Chunk {chunk_idx}] Loaded in {chunk_load_time:.2f}s")
 
-                log_dict = self.train_on_batch(expr=expr, metadata=metadata)
+                for batch_idx, batch in enumerate(loader):
+                    expr = batch["expr"]
+                    metadata = batch["metadata"]
 
-                total_loss = log_dict["total_loss"]
-                print(f"    [Epoch {epoch+1}, Chunk {chunk_idx}, Batch {batch_idx}] Total Loss: {total_loss:.4f}")
+                    log_dict = self.train_on_batch(expr=expr, metadata=metadata)
+
+                    total_loss = log_dict["total_loss"]
+                    print(f"    [Epoch {epoch+1}, Chunk {chunk_idx}, Batch {batch_idx}] Total Loss: {total_loss:.4f}")

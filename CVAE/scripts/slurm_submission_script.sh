@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=gx_sparsity_10_epoch
+#SBATCH --job-name=first_discr_debug_session
 #SBATCH --output=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs/Job_%j-%x/%x.out
 #SBATCH --error=/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs/Job_%j-%x/%x.err
-#SBATCH --time=2:00:00
+#SBATCH --time=5:00:00
 #SBATCH --gpus-per-node=1
 #SBATCH --mem-per-gpu=32G
 
