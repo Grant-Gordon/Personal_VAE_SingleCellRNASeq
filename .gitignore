@@ -23,6 +23,7 @@ personalVAEenv/*
 #####################
 **/fafo.py
 **/*fafo*.py
+**/*fafo*
 TODO.txt
 
 #  metadata preproc #
@@ -42,3 +43,10 @@ CVAE/scripts/slurm_run_cvae_human.sh
 #  Lgacy           #
 #####################
 Legacy/
+
+#  cpp_cvae         #
+#####################
+**/build
+**/external
+#local personal venv
+**/venv/
