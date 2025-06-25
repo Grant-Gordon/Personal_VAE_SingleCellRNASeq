@@ -3,7 +3,7 @@
 #pragma once
 #include <functional>
 #include "core_nightly/Layers/Layer.h" //Incldues Eigen 
-#include "param_init_utils.h"
+#include "core_nightly/Layers/param_init_utils.h"
 
 using InitFn = std::function<Scalar>(unsigned int, unsigned int, std::mt19937)>;
 

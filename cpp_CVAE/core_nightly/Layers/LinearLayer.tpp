@@ -32,7 +32,7 @@ MatrixType LinearLayer<MatrixType>::forward(const MatrixType& input){
 
 //backward
 template <typename MatrixType>
-MatrixType LineaerLayer<MatrixType>::backward(const MatrixType& grad_output){
+MatrixType LinearLayer<MatrixType>::backward(const MatrixType& grad_output){
     //grad_weights = dL/dW - grad_putput^T * input
     this->grad_weights - grad_output.transpose() * this->input_cache;
 
