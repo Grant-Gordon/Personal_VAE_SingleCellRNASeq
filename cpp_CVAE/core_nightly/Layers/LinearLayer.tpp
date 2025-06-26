@@ -45,7 +45,40 @@ MatrixType LinearLayer<MatrixType>::backward(const MatrixType& grad_output){
 
 //update_weights
 template <typename MatrixType>
-void LinearLayer<MatrixType>::update_weights(Scalar learning_rate){
+void LinearLayer<MatrixType>::update_weights(typename MatrixType::Scalar learning_rate){
     this->weights -= learning_rate * this->grad_weights; //where are weights and bias. I dont see any namespace? Can we be more explicit? this.weights?
     this->bias -= learning_rate * this->grad_bias;
+}
+
+//Getters - weights
+template <typename MatrixType>
+MatrixType& LinearLayer<MatrixType>::get_weights(){
+    return  this->weights;
+}
+
+template <typename MatrixType>
+const MatrixType& LinearLayer<MatrixType>::get_weights() const{
+    return  this->weights;
+}
+
+template <typename MatrixType>
+const MatrixType& LinearLayer<MatrixType>::get_grad_weights() const{
+    return  this->grad_weights;
+}
+
+//Getters - biases
+
+template <typename MatrixType>
+MatrixType& LinearLayer<MatrixType>::get_bias(){
+    return  this->bias;
+}
+
+template <typename MatrixType>
+const MatrixType& LinearLayer<MatrixType>::get_bias() const{
+    return  this->bias;
+}
+
+template <typename MatrixType>
+const MatrixType& LinearLayer<MatrixType>::get_grad_bias() const{
+    return  this->grad_bias;
 }

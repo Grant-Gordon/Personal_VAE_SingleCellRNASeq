@@ -19,6 +19,14 @@ class LinearLayer : public Layer<MatrixType>{
         MatrixType backward(const MatrixType& grad_output) override;
         void update_weights(Scalar learning_rate) override;
 
+        //Getters
+        const MatrixType& get_weights() const;
+        MatrixType& get_weights(); 
+        const MatrixType& get_grad_wights() const;
+        const MatrixType& get_bias() const;
+        MatrixType& get_bias();
+        const MatrixTpe& get_grad_bias();
+
         ~LinearLayer() override = default;
 
     private: 
