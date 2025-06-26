@@ -1,5 +1,6 @@
 //LinearLayer.tpp
 #include <random>
+
 //Constructor 
 template <typename MatrixType>
 LinearLayer<MatrixType>::LinearLayer(
@@ -32,7 +33,7 @@ template <typename MatrixType>
 MatrixType LinearLayer<MatrixType>::forward(const MatrixType& input){
     this->input_cache = input;
     //y = xW^T + b (broadcasted)
-    return (input * this->weights.transpose()).rowwise() + this->bias;
+    return (input * this->weights.transpose()).rowwise() + this->bias; //TODO: eigen doesn't support rowwise addition or some shit
 }
 
 //backward

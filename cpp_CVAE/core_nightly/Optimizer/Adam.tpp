@@ -50,7 +50,7 @@ void Adam<MatrixType>::step(std::vector<std::shared_ptr<Layer<MatrixType>>>& lay
         MatrixType v_hat = w_state.v / (1 - std::pow(beta2, timestep));
 
         //Weight update
-        weights -= learning_rate * m_hat.array() / (v_hat.array().sqrt() + epsilon); //TODO: consider protecting v_hat.array().sqrt()?
+        weights -= (learning_rate * m_hat.array() / (v_hat.array().sqrt() + epsilon)).matrix(); //TODO: consider protecting v_hat.array().sqrt()?
 
         //BIAS 
         MatrixType& biases = linear->get_bias();
@@ -68,7 +68,7 @@ void Adam<MatrixType>::step(std::vector<std::shared_ptr<Layer<MatrixType>>>& lay
         MatrixType m_hat_b = b_state.m / (1 -std::pow(beta1, timestep));
         MatrixType v_hat_b = b_state.v / (1 - std::pow(beta2, timestep));
 
-        biases-= learning_rate * m_hat_b.array() / (v_hat_b.array().sqrt() + epsilon);
+        biases-= (learning_rate * m_hat_b.array() / (v_hat_b.array().sqrt() + epsilon)).matrix();
     }
 
 }
