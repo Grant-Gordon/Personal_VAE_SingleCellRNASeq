@@ -8,7 +8,7 @@
 template <typename MatrixType>
 class Layer{
     public: 
-        using Scaler = typename Matrix::Scaler;
+        using Scalar = typename MatrixType::Scalar;
 
         virtual MatrixType forward(const MatrixType& input ) = 0;          //TODO: confirm I want the outputs as T csr
         virtual MatrixType backward(const MatrixType& grad_output) = 0;    //TODO: confirm I want the outputs as T csr

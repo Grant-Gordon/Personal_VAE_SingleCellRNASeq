@@ -1,8 +1,5 @@
 #pragma once
 
-#include "MSE.h"
-
-
 template <typename MatrixType>
 typename MSE<MatrixType>::Scalar MSE<MatrixType>::forward(const MatrixType& predicted, const MatrixType& target){
     MatrixType diff = predicted - target;

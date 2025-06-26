@@ -11,3 +11,5 @@ class MSE : public Loss<MatrixType>{
 
         ~MSE() override = default;
 };  
+
+#include "MSE.tpp"

@@ -1,7 +1,5 @@
 #pragma once
 #include <cmath>
-#include "core_nightly/Layers/Activation_Layers/sigmoid.h"
-
 
 //forward
 template <typename MatrixType>

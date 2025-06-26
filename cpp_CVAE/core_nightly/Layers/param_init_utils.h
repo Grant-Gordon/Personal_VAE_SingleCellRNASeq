@@ -8,7 +8,7 @@ template<typename Scalar>
 inline Scalar glorot_init(unsigned int input_dim, unsigned int output_dim, std::mt19937 gen){
     //U[-sqrt(6 / (in + out)), sqrt(6 / (in + out))]
 
-    Scalar limit = std::sqrt(6.0 / static_cast<scalar>(input_dim, + output_dim));
+    Scalar limit = std::sqrt(6.0 / static_cast<Scalar>(input_dim, + output_dim));
     std::uniform_real_distribution<Scalar> dist(-limit, limit);
     return dist(gen);
 }

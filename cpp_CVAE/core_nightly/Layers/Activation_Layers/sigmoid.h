@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core_nightly/Layers/Layer.h"
+#include "Layer.h"
 
 
 template <typename MatrixType>
@@ -18,4 +18,4 @@ class SigmoidLayer : public Layer<MatrixType>{
         MatrixType output_cache; //Store output from forward to be used in backward
 };
 
-#include "core_nightly/Layers/Activation_Layers/sigmoid.tpp"
+#include "sigmoid.tpp"

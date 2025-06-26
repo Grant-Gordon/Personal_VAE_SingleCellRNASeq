@@ -10,4 +10,4 @@ class Loss{
         virtual MatrixType backward (const MatrixType& prediction, const MatrixType& target) =0;
         virtual ~Loss() = default;
 
-}
+};

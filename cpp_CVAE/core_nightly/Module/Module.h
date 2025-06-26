@@ -2,13 +2,13 @@
 
 #include <vector>
 #include <memory>
-#include "core_nightly/Layers/Layer.h"
+#include "Layer.h"
 
 template <typename MatrixType>
 
 class Module{
     public:
-        using Scalar = typename Matrix::Scalar;
+        using Scalar = typename MatrixType::Scalar;
         Module() = default;
         ~Module() = default;
 
@@ -16,17 +16,17 @@ class Module{
 
         MatrixType forward(const MatrixType& input);
         MatrixType backward(const MatrixType& grad_output);
-        void update_weights(Scalar, learning_rate);
+        void update_weights(Scalar learning_rate);
         
         //Getter
-        std::vector<std::shared_ptr<Layer<MatrixType>>>& get_layer(); 
-        const std:: vector<std::shared_ptr<Layer<MatrixType>>>& get_layer() const ; 
+        std::vector<std::shared_ptr<Layer<MatrixType>>>& get_layers(); 
+        const std:: vector<std::shared_ptr<Layer<MatrixType>>>& get_layers() const; 
 
     private:
-        std::vector<std::shared_ptr<Layer<MatrixType>> layers_vector;
+        std::vector<std::shared_ptr<Layer<MatrixType>>> layers_vector;
         MatrixType last_input;
 
 
 };
 
-#include "core_nightly/Module/Module.tpp"
+#include "Module.tpp"
