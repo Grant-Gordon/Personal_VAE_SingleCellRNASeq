@@ -4,14 +4,14 @@
 
 template<typename MatrixType>
 void Module<MatrixType>::add_layer(std::shared_ptr<Layer<MatrixType>> layer){
-    this->layers.push_back(layer);
+    this->layers_vector.push_back(layer);
 }
 
 template<typename MatrixType>
 MatrixType Moduel<atrixType>::forward(const MatrixType& input){
     MatrixType out = input;
 
-    for(const auto& layer : this->layers){
+    for(const auto& layer : this->layers_vector){
         out = layer->forward(out);
     }
     return out;
@@ -23,7 +23,7 @@ MatrixType Module<MatrixType>::backward(const MatrixType& grad_output){
     MatrixType grad = grad_output;
 
     //backprop reverse order
-    for (auto it = this->layer.rbegin(); it != this->layers.rend(); ++it){ //TOOD: need to implement a reverse iterator for layer???
+    for (auto it = this->layer.rbegin(); it != this->layers_vector.rend(); ++it){ //TOOD: need to implement a reverse iterator for layer???
         grad - (*it)->backward(grad);
     }
     return grad;
@@ -31,7 +31,17 @@ MatrixType Module<MatrixType>::backward(const MatrixType& grad_output){
 
 template <typename MatrixType>
 void Module<MatrixType>::update_weights(Scalar learning_rate){
-    for (const auto& layer : this->layers){
+    for (const auto& layer : this->layers_vector){
         later->update_weights(learning_rate);
     }
+}
+
+template <typename MatrixType>
+std::vector<std::shared_ptr<Layer<MatrixType>>>& get_layer(){
+    return this->layers_vector;
+} 
+
+template <typename MatrixType>
+const std::vector<std::shared_ptr<Layer<MatrixType>>>& get_layer() const{
+    return this->layers_vector;
 }

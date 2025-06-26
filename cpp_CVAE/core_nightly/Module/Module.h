@@ -17,9 +17,13 @@ class Module{
         MatrixType forward(const MatrixType& input);
         MatrixType backward(const MatrixType& grad_output);
         void update_weights(Scalar, learning_rate);
+        
+        //Getter
+        std::vector<std::shared_ptr<Layer<MatrixType>>>& get_layer(); 
+        const std:: vector<std::shared_ptr<Layer<MatrixType>>>& get_layer() const ; 
 
     private:
-        std::vector<std::shared_ptr<Layer<MatrixType>> layers;
+        std::vector<std::shared_ptr<Layer<MatrixType>> layers_vector;
         MatrixType last_input;
 
 
