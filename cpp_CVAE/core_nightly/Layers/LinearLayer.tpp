@@ -9,9 +9,13 @@ LinearLayer<MatrixType>::LinearLayer(
     unsigned int seed, 
     InitFn init_fn
 ){
-
     using Scalar = typename MatrixType::Scalar;
-    
+  
+    static_assert(std::is_floating_point<typename MatrixType::Scalar>::value, "LinearLayer: Scalar must be floating-point.");
+    assert(input_dim > 0 && output_dim > 0 
+        && "LinearLayer: input_dim and output_dim must be > 0.");
+
+
     std::mt19937 gen(seed); //TODO: confirm this is RNG I want
 
     this->weights = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>(output_dim, input_dim);
@@ -32,13 +36,27 @@ LinearLayer<MatrixType>::LinearLayer(
 template <typename MatrixType>
 MatrixType LinearLayer<MatrixType>::forward(const MatrixType& input){
     this->input_cache = input;
-    //y = xW^T + b (broadcasted)
-    return (input * this->weights.transpose()).rowwise() + this->bias; //TODO: eigen doesn't support rowwise addition or some shit
+    //y = xW^T + b (broadcasted): where input = (batch_size X features), W = (inputFeature X outputFeature), bias = (1 X output_size), input*W = (batch_size X output_features)
+    assert(input.cols() == this->weights.cols() 
+        && "LinearLayer::forward: input cols must match weights cols (input_dim).");
+    assert(this->bias.cols() == this->weights.rows() 
+        && "LinearLayer::forward: bias width must match number of output features."); //TODO: is this even true?
+
+    const auto logits = input * this->weights.transpose(); //TODO: point of optimization - Biases replicated and y=xW^T + b is not inplace
+    return logits + this->bias.colwise().replicate(input.rows());
 }
 
 //backward
 template <typename MatrixType>
 MatrixType LinearLayer<MatrixType>::backward(const MatrixType& grad_output){
+    
+    assert(grad_output.rows() == this->input_cache.rows() 
+        && grad_output.cols() == this->weights.rows() 
+        &&"LinearLayer::backward: grad_output must match forward output shape.");
+
+    assert(this->weights.cols() == this->input_cache.cols() 
+        && "LinearLayer::backward: input_cache must match weights shape.");
+
     //grad_weights = dL/dW - grad_putput^T * input
     this->grad_weights = grad_output.transpose() * this->input_cache;
 
@@ -52,7 +70,16 @@ MatrixType LinearLayer<MatrixType>::backward(const MatrixType& grad_output){
 //update_weights
 template <typename MatrixType>
 void LinearLayer<MatrixType>::update_weights(typename MatrixType::Scalar learning_rate){
-    this->weights -= learning_rate * this->grad_weights; //where are weights and bias. I dont see any namespace? Can we be more explicit? this.weights?
+   assert(this->weights.rows() == this->grad_weights.rows() 
+        && this->weights.cols() == this->grad_weights.cols() 
+        && "LinearLayer::update_weights: grad_weights must match weights shape.");
+
+    assert(this->bias.rows() == this->grad_bias.rows() 
+        && this->bias.cols() == this->grad_bias.cols() 
+        && "LinearLayer::update_weights: grad_bias must match bias shape.");
+
+   
+    this->weights -= learning_rate * this->grad_weights; 
     this->bias -= learning_rate * this->grad_bias;
 }
 

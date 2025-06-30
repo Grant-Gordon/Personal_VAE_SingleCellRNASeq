@@ -17,11 +17,20 @@ Adam<MatrixType>::Adam(
     beta2(beta2),
     epsilon(epsilon),
     timestep(0) 
-    {}
+    {
+        static_assert(std::is_floating_point<typename MatrixType::Scalar>::value, "Adam: Scalar must be floating-point.");
+        assert(learning_rate > 0 && "Adam: learning rate must be > 0.");
+        assert(beta1 >= 0 && beta1 < 1 && "Adam: beta1 must be in [0, 1).");
+        assert(beta2 >= 0 && beta2 < 1 && "Adam: beta2 must be in [0, 1).");
+        assert(epsilon > 0 && "Adam: epsilon must be > 0.");
+
+    }
 
 
 template <typename MatrixType>
 void Adam<MatrixType>::step(std::vector<std::shared_ptr<Layer<MatrixType>>>& layers_vector) {
+    assert(!layers_vector.empty() && "Adam::step: layers_vector is empty.");
+
     ++this->timestep;
 
     for (auto& layer: layers_vector){

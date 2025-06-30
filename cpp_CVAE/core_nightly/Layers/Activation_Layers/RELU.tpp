@@ -5,6 +5,9 @@
 
 template <typename MatrixType>
 MatrixType RELULayer<MatrixType>::forward(const MatrixType& input){
+    static_assert(std::is_arithmetic<typename MatrixType::Scalar>::value, "RELU forward: Scalar must be arithmetic.");
+    assert(input.rows() > 0 && input.cols() > 0 && "RELU forward: input matrix must be non-empty.");
+    
     this->input_cache = input;
     MatrixType output = input;
     for (int i=0; i < output.rows(); ++i){
