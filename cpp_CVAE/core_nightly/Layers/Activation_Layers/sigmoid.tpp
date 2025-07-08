@@ -1,3 +1,5 @@
+//TODO: needs like an 90% refactor
+
 #pragma once
 #include <cmath>
 

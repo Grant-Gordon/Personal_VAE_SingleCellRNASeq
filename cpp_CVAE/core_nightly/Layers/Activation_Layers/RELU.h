@@ -1,20 +1,22 @@
+//RELU.h
 #pragma once
 #include "Layer.h"
 #include <Eigen/Dense>
 
 
-template <typename MatrixType>
-class RELULayer: public Layer<MatrixType>{
+template <typename Scalar>
+class RELULayer: public Layer<Scalar>{
     public:
-        using Scalar = typename MatrixType::Scalar;
+        using MatrixD = typename Layer<Scalar>::MatrixD;
+
         RELULayer() = default;
         ~RELULayer() override = default;
 
-        MatrixType forward(const MatrixType& input) override; //TODO: point of optimization - may be able to overload forward and pacward to pass rvals using move semantics to avoid copies
-        MatrixType backward(const MatrixType& grad_output) override;
+        MatrixD forward(const MatrixD& input) override; //TODO: point of optimization - may be able to overload forward and pacward to pass rvals using move semantics to avoid copies
+        MatrixD backward(const <MatrixD>& grad_output) override;
 
     private:
-        MatrixType input_cache;
+        MatrixD input_cache;
 
         
 

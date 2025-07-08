@@ -4,14 +4,18 @@
 #include <functional>
 #include "Layer.h" //Incldues Eigen 
 #include "param_init_utils.h"
+#include "custom_types.h"
+#include <optional>
 
-template <typename MatrixType>
-class LinearLayer : public Layer<MatrixType>{
+
+
+template <typename Scalar>
+class LinearLayer : public Layer<Scalar>{
+    
+    using typename Layer<Scalar>::MatrixD;
+    using typename Layer<Scalar>::VectorD;
 
     public:
-        using Scalar = typename MatrixType::Scalar;
-        using InitFn = std::function<Scalar(unsigned int, unsigned int, std::mt19937)>;
-
 
         LinearLayer(
             unsigned int input_dim, 
@@ -19,30 +23,37 @@ class LinearLayer : public Layer<MatrixType>{
             unsigned int seed, 
             InitFn init_fn);
 
-        MatrixType forward(const MatrixType& input) override;
-        MatrixType backward(const MatrixType& grad_output) override;
+        //Standard Dense
+        MatrixD forward(const MatrixD& input) override;
+        MatrixD backward(const MatrixD& grad_output) override;
+        
+        //Custom Sparse
+        VectorD forward(const SingleSparseRow& input);
+        VectorD backward(const VectorD& grad_output);
+        
         void update_weights(Scalar learning_rate) override;
 
         //Getters
-        const MatrixType& get_weights() const;
-        MatrixType& get_weights(); 
-        const MatrixType& get_grad_weights() const;
+        const MatrixD& get_weights() const;
+        MatrixD& get_weights(); 
+        const MatrixD& get_grad_weights() const;
         
-        const MatrixType& get_bias() const;
-        MatrixType& get_bias();
-        const MatrixType& get_grad_bias() const;
+        const VectorD& get_bias() const;
+        VectorD& get_bias();
+        const VectorD& get_grad_bias() const;
 
         ~LinearLayer() override = default;
 
     private: 
         //TODO: point of optimization -  Could potentially infer matrices size from templates for compile time loop unrolling. 
-        MatrixType weights;
-        MatrixType bias;      
+        MatrixD weights;
+        VectorD bias;      
         
-        MatrixType input_cache;
+        MatrixD input_cache;
+        std::optional<SingleSparseRow> input_cache_sparse;
 
-        MatrixType grad_weights;
-        MatrixType grad_bias;
+        MatrixD grad_weights;
+        VectorD grad_bias;
 };
 
 #include "LinearLayer.tpp"

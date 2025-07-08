@@ -1,0 +1,55 @@
+python front end:
+    ***     
+        contains get_npz_chunk_csr_array_pointers() util function that cpp calls,
+        contains config.yaml/json and cpp_config_generator() util
+        contains training stats processor that generates figures from training log files.
+    ***
+    -takes in config yaml
+    -parses config and generates config.hpp
+    -python calls cmake with import subprocess
+    -python calls train_model() passing off to the cpp backend
+    -python does some logging/output processing/figure gen
+
+cpp backend
+    *** 
+        contains full model architecture,
+        contains full trianing loop,
+        contains batch creation that calls python util to get pointers to chunked data
+        contains basic logging functions that write to file format that is easy for cpp to write to and python to read from. 
+    ***
+    -initializes model, weights, optimizer, etc.
+    -for epoch
+        -shuffle chunks_list
+        -for chunk in chunks_list
+            -pull npz chunk pointers using python util method
+            -BatchCreator(num_preloader, num_workers)
+            -while (BatchCreator not done)
+                -train_on batch()
+                    |___ if each sample gets own thread, switch BatchCreator from (numpy_batch->Eigen_batch) to (numpy_sample->Eigen_sample)
+
+                -write batch level stats
+            
+            -write chunk level stats
+
+        -write epoch level stats
+    
+    -write training summary stats
+    -save model
+    -pass back to python for training stats processing
+
+
+//mental_model.txt
+    ***
+    Training loop specs
+    ***
+        - chunk_idxs = get num_samples in chunk csr
+        - shuffle && split chunk_idxs into batch sample_idx arrays; i.e. [S,S,S...] -> [ B[S,S], B[S,S], B[S,S], B[S,S] ]
+        - for batch_idxs in batch_list
+            (Either A or B)
+                A: for sample in batch
+                    generate SSR sample from csr pointers
+                    vector<SSR>.pushback(sample)
+                    model forward(sample)
+                        |___computes MSE loss with vector<SSR> targets X dense reconstruction (some compute time to itterate SSR ptrs)
+                    free vector<SSR> (for each batch, R/W sizeof(SSR) * batch size)
+               
