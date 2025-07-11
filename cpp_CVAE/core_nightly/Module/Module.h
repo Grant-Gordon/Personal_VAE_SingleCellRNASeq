@@ -6,6 +6,7 @@
 #include "Layer.h"
 #include "LinearLayer.h"
 #include "custom_types.h"
+#include "config.h"
 
 template <typename Scalar>
 
@@ -26,7 +27,7 @@ class Module{
 
         MatrixD backward(const MatrixD upstream_grad, const std::vector<SingleSparseRow<Scalar>>& batch_input);
 
-        void update_weights(Scalar learning_rate);
+        void update_weights();
         
         //Getter
         Layer<Scalar>& get_layer(); 

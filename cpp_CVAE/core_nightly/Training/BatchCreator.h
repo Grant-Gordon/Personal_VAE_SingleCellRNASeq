@@ -8,6 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "custom_types.h"
+#include "config.h"
 
 template <typename Scalar>
 class BatchCreator{
@@ -15,12 +16,7 @@ class BatchCreator{
 
     public:
         
-        BatchCreator(
-            const ChunkExprCSR<Scalar>& chunk_csr,
-            const int num_batches_to_preload,
-            const int batch_size,
-            const int seed 
-        );
+        BatchCreator(const ChunkExprCSR<Scalar>& chunk_csr);
         
         ~BatchCreator();
     
@@ -30,10 +26,8 @@ class BatchCreator{
     private:
         
         ChunkExprCSR<Scalar> chunk_csr;
-        int batch_size;
         int total_batches_loaded;
         int num_batches_in_chunk;
-        int num_batches_to_preload;
         
         std::vector<int> flat_chunk_sample_ids;     //contiquous buffer of shuffled chunk sample indices
         std::vector<int*> shuffled_split_batch_ids; // ptrs to the shuffled indices
@@ -45,7 +39,7 @@ class BatchCreator{
         std::thread preload_thread; 
         bool all_batches_preloaded;
 
-        int seed;//TODO need to figure out configs and where stuff like seed and batchsize is owned/defined
+        //TODO: maybe just drop final batch, kinda makes a headache with forward passes ngl 
         int final_batch_size;
 
         void preload_batches();

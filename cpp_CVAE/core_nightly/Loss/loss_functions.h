@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <cmath>
+#include "config.h"
 
 namespace loss {
 

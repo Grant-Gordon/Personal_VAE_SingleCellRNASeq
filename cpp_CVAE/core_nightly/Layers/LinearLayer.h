@@ -2,11 +2,11 @@
 
 #pragma once
 #include <functional>
-#include "Layer.h" //Incldues Eigen 
-#include "param_init_utils.h"
-#include "custom_types.h"
 #include <optional>
-
+#include "Layer.h" //Incldues Eigen 
+#include "custom_types.h"
+#include "param_init_utils.h"
+#include "config.h"
 
 
 template <typename Scalar>
@@ -17,11 +17,12 @@ class LinearLayer : public Layer<Scalar>{
 
     public:
 
+        //TODO: cam pass input, output dims, and init fn with config 
         LinearLayer(
             unsigned int input_dim, 
             unsigned int output_dim, 
-            unsigned int seed, 
-            InitFn init_fn);
+            InitFn init_fn
+            );
 
         //Standard Dense
         MatrixD forward(const MatrixD& input) override;

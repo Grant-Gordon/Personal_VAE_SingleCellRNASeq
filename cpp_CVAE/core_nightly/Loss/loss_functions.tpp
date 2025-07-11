@@ -17,12 +17,11 @@ namespace loss {
     //SSR MSE
     template <typename Scalar>
     Scalar SSRMSELoss<Scalar>::compute( const loss::MatrixD& reconstructed, const std::vector<SingleSparseRow>& targets) {
-        const int batch_size = reconstruced.rows();
         const int feature_size = reconstructed.cols();
         Scalar total_error = 0;
         
         #pragma omp parallel for reduction(+:total_error)
-        for(int i = 0; i < batch_size; ++i){
+        for(int i = 0; i < config::training_batch_size; ++i){
             const auto& target_row = targets[i];
             const auto& reconstructed_row = output.row(i);
 
@@ -35,7 +34,7 @@ namespace loss {
         
             }
         }
-        return total_error / batch_size;
+        return total_error / config::training_batch_size;
     }
 
 
@@ -46,8 +45,7 @@ namespace loss {
                                     const loss::MatrixD& target,
                                     Scalar epsilon) {
         auto clipped = input.array().min(1 - epsilon).max(epsilon);
-        return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum()
-            / static_cast<Scalar>(input.rows());
+        return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum() / static_cast<Scalar>(input.rows());
     }
 
     // KL Divergence

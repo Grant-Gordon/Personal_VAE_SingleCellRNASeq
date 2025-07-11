@@ -11,7 +11,6 @@ template <typename Scalar>
 LinearLayer<Scalar>::LinearLayer(
     unsigned int input_dim, 
     unsigned int output_dim, 
-    unsigned int seed, 
     InitFn init_fn
 ){
 
@@ -21,7 +20,7 @@ LinearLayer<Scalar>::LinearLayer(
         && "LinearLayer: input_dim and output_dim must be > 0.");
 
 
-    std::mt19937 gen(seed); //TODO: confirm this is RNG I want
+    std::mt19937 gen(config::seed); //TODO: confirm this is RNG I want
 
     this->weights = MatrixD(output_dim, input_dim);
     this->bias = VectorD::Zero(output_dim);
@@ -107,7 +106,7 @@ VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
 }
 
 
-//TODO: Review this function, not 100% on the logic 
+//TODO: There are issues with how this->input_cache_sparse are cached, look into how inputs are being passed to Module.  
 //Backward Sparse Row - Custom backward for handling the SingleSparseRow inputs of the first Linear Layer
 template <typename Scalar>
 VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input){

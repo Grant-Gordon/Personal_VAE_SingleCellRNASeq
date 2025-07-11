@@ -1,7 +1,6 @@
 //Layer.h abstract class
 #pragma once
 
-#include <Eigen/SparseCore> //TODO:  include in CMAKE?
 #include <Eigen/Dense>
 #include <memory>
 #include "custom_types.h"

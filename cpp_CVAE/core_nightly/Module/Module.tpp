@@ -22,9 +22,10 @@ void Module<Scalar>::add_layer(std::shared_ptr<Layer<Scalar>> layer){
 template <typename Scalar>
 MatrixD Module<Scalar>::forward(const std::vector<SingleRowSparse<Scalar>>& batch){
     
-    MatrixD out(batch_size, this->layers_vector[0]->output_dim);
+    MatrixD out(config::training_batch_size, this->layers_vector[0]->output_dim);
     
     //parallelize the input layer so that each sample(SSR) in the batch gets its own thread
+    //TODO: does this break with final batch < batch_size
     #pragma omp parallel for
     for (int i = 0; i < batch.size(); ++i){
         out.row(i) = this->layers_vector[0]->forward(batch[i]); //forward takes in SSR, returns VectorD i.e. dense row 
@@ -39,7 +40,7 @@ MatrixD Module<Scalar>::forward(const std::vector<SingleRowSparse<Scalar>>& batc
 }
 
 
-
+//TODO: think this breaks for final batch < batchsize
 // Unified backprop first passing through all tayers, then parallizes the batch for the SSR input layer NOTE: because of the critical section in LinearLayer::forward(SSR) this is not actually parallelized. 
 template <typename Scalar>
 MatrixD Modulce<Scalar>::backward(const MatrixD upstream_grad, const std::vector<SingleSparseRow<Scalar>>& batch_input){ //TODO: why am I passing inputs in? cant this be gotten elsewhere? need to define where ownership of SSR batch lives
@@ -57,12 +58,12 @@ MatrixD Modulce<Scalar>::backward(const MatrixD upstream_grad, const std::vector
 }
 
 template <typename Scalar>
-void Module<Scalar>::update_weights(Scalar learning_rate){
+void Module<Scalar>::update_weights(){
     assert(!this->layers_vector.empty() && "Module::update_weights: no layers to update.");
 
-    this->input_layer.update_weights(learning_rate);
+    this->input_layer.update_weights(config::training_learning_rate);
     for (const auto& layer : this->non_input_layers){
-        layer->update_weights(learning_rate);
+        layer->update_weights(config::training_learning_rate);
     }
 }
 

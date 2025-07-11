@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-
+#include "config.h"
 
 template <typename Scalar>
 class Adam : public Optimizer<Scalar>{
@@ -15,18 +15,11 @@ class Adam : public Optimizer<Scalar>{
         using MatrixD = typename Layer<Scalar>::MatrixD;
         using VectorD = typename Layer<Scalar>::VectorD;
 
-        Adam(Scalar learning_rate = 0.001,
-            Scalar beta1 = 0.9,
-            Scalar beta2 = 0.999,
-            Scalar epsilon = 1e-8);
+        Adam();
 
         void step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers);
 
     private:
-        Scalar learning_rate;
-        Scalar beta1;
-        Scalar beta2;
-        Scalar epsilon;
         int timestep;
 
         struct ParamState{

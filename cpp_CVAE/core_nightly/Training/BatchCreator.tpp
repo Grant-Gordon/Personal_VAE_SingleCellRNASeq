@@ -5,43 +5,46 @@ using Batch = typename std::vector<std::unique_ptr<SingleSparseRow<Scalar>>>;
 
 BatchCreator::BatchCreator(
     const ChunkExprCSR<Scalar>& chunk_csr,
-    const int num_batches_to_preload,
-    const int batch_size,
-    const int seed
 ):
     chunk_csr(chunk_csr),
-    batch_size(batch_size),
-    num_batches_to_preload(num_batches_to_preload),
     total_batches_loaded(0),
     all_batches_preloaded(false),
-    seed(seed)
 {
-    this->num_batches_in_chunk = (this->chunk_csr.shape[0] + this->batch_size -1) / this->batch_size; //B=3 s=11, (11+2)/3 = 4
-    this->final_batch_size = (this->chunk_csr.shape[0] % this->batch_size ==0) ? this->batch_size : this->chunk_csr.shape[0] % this->batch_size; // handles final batch 
+    this->num_batches_in_chunk = (this->chunk_csr.shape[0] + config::training_batch_size -1) / config::training_batch_size; //B=3 s=11, (11+2)/3 = 4
+    this->final_batch_size = (this->chunk_csr.shape[0] % config::training_batch_size ==0) ? config::training_batch_size : this->chunk_csr.shape[0] % config::training_batch_size; // handles final batch 
     this->generate_shuffled_split_batch_ids();
 
     //NOTE prelaod_batches is only allcated 1 thread. 
     this->preload_thread = std::thread(&BatchCreator::preload_batches, this);
 }
 
-//TODO: wtf goin on w these threads man
 //TODO: create benchmark to determine if batches are consumed faster than created, if so add multiple preload threads rather than just one. 
 void BatchCreator::preload_batches(){
     for(int i= 0; i < this->num_batches_in_chunk; ++i){
         if(this->stop_flag){break;}
         //TODO: add assert to confirm that it is only ever the final batch that this occures in. i.e. no wierd shuffling going on
         //Handles final batch where batch might be smaller than  batch_size
-        int actual_batch_size = (i == this->num_batches_in_chunk -1) ? this->final_batch_size : this->batch_size;
+        int actual_batch_size = (i == this->num_batches_in_chunk -1) ? this->final_batch_size : config::training_batch_size;
 
-        Batch batch = this->generate_batch(this->shuffled_split_batch_ids[i], actual_batch_size);
-
+        
         { //RAII, mutex is relased once scope ends
             std::unique_lock<std::mutex> lock(queue_mutex);
+            //wait until there is room in the queue
+            this->queue_cv.wait(lock, [this]() {
+                return this->preloaded_batch_queue.size() < config::BatchCreator_num_batches_to_prelaod || this->stop_flag;
+            });
+            if (this->stop_flag){break;}
+        }
+        //dont need mutex for batch generation
+        Batch batch = this->generate_batch(this->shuffled_split_batch_ids[i], actual_batch_size);
+        {//do need mutex for pushing to queue 
+            
+            std::unique_lock<std::mutex> lock(queue_mutex);
             preloaded_batch_queue.push(std::move(batch));
-            queue_cv.notify_one();
+            queue_cv.notify_all(); //Hey trainer, Theres a batch ready    
         }
 
-        this->total_batches_loaded++;
+        ++this->total_batches_loaded;
     }
     this->all_batches_preloaded = true;
 }
@@ -81,22 +84,22 @@ void BatchCreator::generate_shuffled_split_batch_ids(){
     this->flat_chunk_sample_id.resize(num_samples);
 
     std::iota(this->flat_chunk_sample_id.begin(), this->flat_chunk_sample_id.end(), 0);
-    std::mt19927 rng(this->seed);
+    std::mt19927 rng(config::SEED);
     std::shuffle(this->flat_chunk_sample_id.begin(), this->flat_chunk_sample_id.end(), rng);
 
     this->shuffled_split_batch_ids.reserve(this->num_batches_in_chunk);
     
     //TODO: point of optimization - could thread this but need to be careful, might starve threads in forward pass. 
     for (int i = 0; i < this->num_batches_in_chunk; ++i){
-        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_id[i * this->batch_size]);
+        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_id[i * config::training_batch_size]);
     }
 }
 
 
 BatchCreator::Batch BatchCreator::get_next_batch(){
     std::unique_lock<std::mutex> lock(this->queue_mutex); //RAII
-    queue_cv.wait(lock, [&](){ //[&] means capture all local vars by reference (local vars visible to lambda)
-        return !preloaded_batch_queue.empty() || all_batches_preloaded; //wait until not empty or finished 
+    queue_cv.wait(lock, [this](){ //[&] means capture all local vars by reference (local vars visible to lambda)
+        return !preloaded_batch_queue.empty() || all_batches_preloaded || this->stop_flag; //wait until not empty or finished 
     });
     
     
@@ -107,6 +110,7 @@ BatchCreator::Batch BatchCreator::get_next_batch(){
 
     Batch batch = std::move(this->preloaded_batch_queue.front());
     this->preloaded_batch_queue.pop();
+    this->queue_cv.notify_all(); //Wakeup preloader just incase
     return batch;
 }
 
