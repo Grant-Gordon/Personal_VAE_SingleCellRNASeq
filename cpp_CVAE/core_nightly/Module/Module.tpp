@@ -4,54 +4,57 @@
 
 template <typename Scalar>
 Module<Scalar>::Module(
-    LinearLayer<Scalar>&& input, 
-    std::vector<shared_ptr<Layer<Scalar>>>&& non_input_layers
+    std::vector<shared_ptr<Layer<Scalar>>>&& layers_vector
 ):
-    input_layer(std::move(input)),
-    non_input_layers(std::move(non_input_layers))
+    layers_vector(std::move(layers_vector))
 {}
 
 
 template<typename Scalar>
 void Module<Scalar>::add_layer(std::shared_ptr<Layer<Scalar>> layer){
-    assert(layer != nullptr && "Module::add_layer: cannot add null layer.");
+    assert(this->layers_vector != nullptr && "Module::add_layer: cannot add null layer.");
 
     this->layers_vector.push_back(layer);
 }
 
 
-template<typename Scalar>
-VectorD Module<Scalar>::forward_input(const SingleRowSparse& input_sample){
-    return input_layer.forward(input_sample);
-}
-
-
-template<typename Scalar>
-MatrixD Module<Scalar>::forward(const MatrixD& dense_batch_output){
-    MatrixD out = dense_batch_output;
-    for (auto& layer : this->non_input_layers){
-        out = layer->forward(out);
+//Unified forward pass that handles in parallel the SSR inputs, then sequentially forwards the batch created by the SSR input to the remainder layers
+template <typename Scalar>
+MatrixD Module<Scalar>::forward(const std::vector<SingleRowSparse<Scalar>>& batch){
+    
+    MatrixD out(batch_size, this->layers_vector[0]->output_dim);
+    
+    //parallelize the input layer so that each sample(SSR) in the batch gets its own thread
+    #pragma omp parallel for
+    for (int i = 0; i < batch.size(); ++i){
+        out.row(i) = this->layers_vector[0]->forward(batch[i]); //forward takes in SSR, returns VectorD i.e. dense row 
     }
+
+    //sequentially forward the rest of the layers
+    for(int i = 1; i < this->layers_vector.size(); ++i){
+        out = this->layers_vector[i]->forward(out);
+    }
+    
     return out;
 }
 
-//Sparse single sample input 
-template <typename Scalar>
-VectorD Module<Scalar>::backward_input(const VectorD& grad_output){
-    return this->input_layer.backward(grad_output);
-}
 
 
-//batch used for all non-input-layers
+// Unified backprop first passing through all tayers, then parallizes the batch for the SSR input layer NOTE: because of the critical section in LinearLayer::forward(SSR) this is not actually parallelized. 
 template <typename Scalar>
-MatrixD Module<Scalar>::backward_rest(const MatrixD& grad_output){
-    MatrixD grad = grad_ouput;
-    for(int i =this->non_input_layers.size()  -1; i >=; --i){
-        grad = this->non_input_layers[i]->backward(grad);
+MatrixD Modulce<Scalar>::backward(const MatrixD upstream_grad, const std::vector<SingleSparseRow<Scalar>>& batch_input){ //TODO: why am I passing inputs in? cant this be gotten elsewhere? need to define where ownership of SSR batch lives
+    MatrixD grad = upstream_grad;
+    //backprop through dense layers in reverse
+    for (int i = static_cast<int>(this->layers_vector.size()) -1; i >0; --i){
+        grad = this->layers_vector[i]->backward(grad);
+    }
+    //backprop sparse input layer per sample
+    #pragma omp parallel for //NOTE: this is technically parallelized but, because backward(SingleSparseRow) contains critical section, in practice it is sequential 
+    for(int i =0; i < batch_input.size(); ++i){
+        grad.row(i) = this->layers_vector[0]->backward(grad.row(i).transpose(), batch_input[i]).transpose();
     }
     return grad;
 }
-
 
 template <typename Scalar>
 void Module<Scalar>::update_weights(Scalar learning_rate){
@@ -65,38 +68,11 @@ void Module<Scalar>::update_weights(Scalar learning_rate){
 
 
 template <typename Scalar>
-std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_non_input_layers() {
+std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_layers() {
     return this->layers_vector;
 }
 
 template <typename Scalar>
-const std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_non_input_layers() const {
+const std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_layers() const {
     return this->layers_vector;
 }
-
-template <typename Scalar>
-Layer<Scalar>& Module<Scalar>::get_input_layer() {
-    return this->input_layer;
-}
-
-template <typename Scalar>
-const Layer<Scalar>& Module<Scalar>::get_input_layer() const {
-    return this->input_layer;
-}
-
-
-template <typename Scalar> //TODO: point of optimization - just store input with rest of layers no need to store seperatly and make wasteful copies for the get all function( used in Optimizer)
-std::vector<std::shared_ptr<Layer<Scalar>>> Module<Scalar>::get_all_layers(){
-    std::vector<std::shared_ptr<Layer<Scalar>>> all;
-    all.reserve(layers_vector.size() + 1);
-    all.push_back(std::make_shared<LinearLayer<Scalar>>(input_layer)); 
-    all.insert(all.end(), layers_vector.begin(), layers_vector.end());
-    return all;
-}
- 
-}
-
-
-
-
-

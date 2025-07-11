@@ -28,7 +28,7 @@ class LinearLayer : public Layer<Scalar>{
         MatrixD backward(const MatrixD& grad_output) override;
         
         //Custom Sparse
-        VectorD forward(const SingleSparseRow& input);
+        VectorD forward(const SingleSparseRow<Scalar>& input);
         VectorD backward(const VectorD& grad_output);
         
         void update_weights(Scalar learning_rate) override;
@@ -50,10 +50,11 @@ class LinearLayer : public Layer<Scalar>{
         VectorD bias;      
         
         MatrixD input_cache;
-        std::optional<SingleSparseRow> input_cache_sparse;
+        std::optional<SingleSparseRow<Scalar>> input_cache_sparse;
 
         MatrixD grad_weights;
         VectorD grad_bias;
+        //MatrixD grad_inputs;//TODO: maybe not really necessary
 };
 
 #include "LinearLayer.tpp"

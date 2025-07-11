@@ -47,24 +47,54 @@ MatrixD LinearLayer<Scalar>::forward(const MatrixD& input){
 
 //Backward  Dense - all layers except input layer will use this dense X dense
 template <typename Scalar>
-MatrixD LinearLayer<Scalar>::backward(const MatrixD& grad_output){
+MatrixD LinearLayer<Scalar>::backward(const MatrixD& upstream_grad){
+    //B = batch_size, in_d & out_d = this layers input & ouput dimensionality 
     
-
-    //grad_weights = dL/dW - grad_putput^T * input
-    this->grad_weights = grad_output.transpose() * this->input_cache;
-
-    //grad_bias = dL/db = sum across rows
-    this->grad_bias = grad_output.colwise().sum().transpose();
+    //upstream_grad [B * out_d]
+    //weights = [out_d * in_d]
+    //bias = [out_d * 1]
+    // x = [B * in_d]
+    //y = [B * out_d]
     
-    //grad_input = grad_output * W
-    return grad_output * this->weights;
+    // forward: y = Wx +b
+    // find 
+    //     dL/dW(gradient of weights)  - how much weightw contributes to to the loss function - deritivie of loss function wrt weights - if I adjust weights slightly how much does Loss change
+    //     dL/db(gradients of bais)    - how much bias contributes to to the loss function - deritivie of loss function wrt bias - if I adjust bias slightly how much does Loss change
+    //     dL/dx(gradients of input)   - how much input contribute to to the loss function - deritivie of loss function wrt input - if I adjust inputs slightly how much does Loss change
+
+    //grad_weights [out_d * in_d]
+    //  = dL/dW 
+    //  = dL/dy *dy/dW
+    //      dL/dy = upstream_grad
+    //      dy/dW = x | specifically if y_i = [sum over j (w_ij * x_i + b_i)]  then dy_i/dW_ij = x_j
+    //  = upstream_grad^T * input
+    this->grad_weights = upstream_grad.transpose() * this->input_cache;
+
+    //grad_bias [out_d *1]
+    //  = dL/db 
+    //  = dL/dy * dy/db
+    //      dL/dy = upstream_grad
+    //      dy/db = I | specifically if y_i = W_i * x + b_i, then dy/db_i = 1, for all i!=j, dy/db_i =0 i.e. I
+    //  = upstream_grad * Identity
+    //  = sum across rows
+    this->grad_bias = upstream_grad.colwise().sum().transpose();
+    
+    //grad_input [B * in_d]
+    //  = dL/dx 
+    //  = dL/dy * dy/dx 
+    //      dL/dy = upstream_grad
+    //      dy/dx = W 
+    //  = upstream_grad * Weights
+    
+    //this->grad_inputs  = upstream_grad * this->weights //TODO: only store grad_inputs if neccesarry?
+    return upstream_grad * this->weights;
 }
 
 
 //Forward Sparse Row - Custom forward for handling the sparse inputs of the first Linear Layer
 template <typename Scalar>
-VectorD LinearLayer<Scalar>::forward(const SingleSparseRow& input){
-    this->input_cache_sparse = input;
+VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
+    this->input_cache_sparse = input; //TODO this implies that every linear layer only takes in one SSR, need to clarify the ownership of batch samples for SSR backprop
     VectorD output = this->bias;
     
    
@@ -78,30 +108,65 @@ VectorD LinearLayer<Scalar>::forward(const SingleSparseRow& input){
 
 
 //TODO: Review this function, not 100% on the logic 
-//Backward Sparse Row - Custom backward for handling the sparse inputs of the first Linear Layer
+//Backward Sparse Row - Custom backward for handling the SingleSparseRow inputs of the first Linear Layer
 template <typename Scalar>
-VectorD LinearLayer<Scalar>::backward(const VectorD& grad_output){
-
-    assert(this->input_cache_sparse.has_value() && "LinearLayer::backward (Sparse Row): no cached sparse input found");
+VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input){
+    //upstream_grad [out_d * 1] = dL/dy_i for this particular SSR
+    //weights [out_d * in_d]
+    // bias [out_d * 1]
+    //input.indices: [nnz]
+    //input.data [nnz]
+    //grad_weights [out_d * in_d]
+    //grad_bias [out_d *1]
+    //grad_input [in_d *1]
     
-    //gradient wrt bias
-    this->grad_bias += grad_output;
+    //find
+    //   dL/dw - grad of loss wrt wieghts for this single sample
+    //  dlL/db - grad of loss wrt bias for this sample
+    // dL/x_i - grad of loss wrt input (ssr)
 
-    VectorD grad_input = VectorD::Zero(this->weights.cols()); //input_dim zeros
+    // forward: y_i = sum_j (w_j * x_j) + b
     
-    for (int i = 0; i < input.nnz; ++i){
-        //grad wrt weights
-        const int idx = this->input_cache_sparse->indices[i];
-        const Scalar val = this->input_cache_sparse->data[i];
 
-        this->grad_weights.row(idx) += val * grad_output.transpose();
 
-        //grad wrt inputs //TODO: I dont understand back prop well enough idk wth im using this for
-        for (int j = 0; j < output_dim; ++ j){
-            grad_input[idx] += grad_output[j] * this->weights(i, idx);
-        }
+
+    //gradient of loss wrt bias
+    // = dL/db 
+    // = dL/dy * dy/db 
+    //     dL/dy = upstream_grad
+    //     dy/db = I 
+    // = upstream_grad * I
+
+    // each sample adds its own contribution to bias 
+    // bias [out_d * 1]
+    // upstream_grad = [out_d * 1]
+
+    #pragma omp critical{//TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
+        for (int j = 0; j < input.nnz; ++j) {
+        this->grad_bias += upstream_grad; //elementwie addition
     }
-    return grad_input;
+    // gradient loss wrt weight 
+    // each nnz x_j in input contributes to dL/dW 
+    // val [1:Scalar]
+    //outer product: upstream_grad * val =[out_d * 1]
+
+    
+    #pragma omp critical{   //TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
+        for (int j = 0; j < input.nnz; ++j) {
+            int col = input.indices[j]; //column idx of val
+            Scalar val = input.data[j]; 
+            
+            // dL/dWij += upstream_grad * val 
+            this->grad_weights.col(col) += upstream_grad * val;
+            
+        }
+    }   
+    //gradient wrt inputs[in_d * 1] = 
+    //  = dL/dx
+    //  = upstream_grad * W 
+    return this->weights.transpose() * upstream_grad;
+
+
 }
 
 

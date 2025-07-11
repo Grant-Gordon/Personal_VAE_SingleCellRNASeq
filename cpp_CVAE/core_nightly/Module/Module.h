@@ -17,26 +17,21 @@ class Module{
         LinearLayer<Scalar> input_layer;
         
 
-        Module(LinearLayer<Scalar>>&& input, std::shared_ptr<Layer<Scalar>>&& non_input_layers);
+        Module(std::vector<std::shared_ptr<Layer<Scalar>>>&& layers_vector);
         ~Module() = default;
 
         void add_layer(std::shared_ptr<Layer<Scalar>> layer);
 
-        VectorD forward_input(const SingleRowSparse& input);
-        MatrixD forward(const MatrixD& dense_batch_output);
+        MatrixD forward(const MatrixD& std::vector<SingelSparseRow<Scalar>>& batch);
 
-        VectorD backward_input(const VectorD& grad_output );
-        MatrixD backward(const MatrixD& grad_output);
+        MatrixD backward(const MatrixD upstream_grad, const std::vector<SingleSparseRow<Scalar>>& batch_input);
 
         void update_weights(Scalar learning_rate);
         
         //Getter
-        std::vector<std::shared_ptr<Layer<Scalar>>>& get_non_input_layers(); 
-        Layer<Scalar>& get_input_layer(); 
-        const std:: vector<std::shared_ptr<Layer<Scalar>>>& get_non_input_layers() const; 
-        const Layer<Scalar>& get_input_layer() const; 
+        Layer<Scalar>& get_layer(); 
+        const Layer<Scalar>& get_layer() const; 
 
-        std::vector<std::shared_ptr<Layer<Scalar>>> get_all_layers();
 
 
     private:
