@@ -3,45 +3,47 @@
 #include <pybind11> 
 #include "BatchCreator.h"
 #include "custom_types.h"
+#include "get_ChunkExprCSR_from_npz.tpp"
 
 template <typename Scalar>
 Trainer(Module<Scalar>& model,
         Optimizer<Scalar>& optimizer,
-        int batch_size,
-        int num_features,
-        int num_epochs
+        const std::vector<std::string> count_files_list,
+        const std::vector<std::string> metadata_files_list //NOTE: metadata is not currently being handled anywhere 
 ):
     model(model),    
     optimizer(optimizer),
-    batch_size(batch_size),
-    num_features(num_features)
-    num_epochs(num_epochs)
+    count_files_list(count_files_list)
+    metadata_files_list(metadata_files_list)
 {}
-void train(){
-    for(epoch : this->num_epochs){
-        for(chunk file in data_dir){
-            pythonChunk = frontend::load_chunk_npz();
+void Trainer<Scalar>::train(){
+
+
+    for(epoch : config::training_num_epochs){
+        for(count_file: count_files_list){
             
-            ChunkExprCSR chunk =(pythonchunl.col, pythonchunk.indptr, pythonchunk.vals, pythonchunk.size, pythonchunk.nnz);
+            
+            ChunkExprCSR<Scalar> chunk_csr = get_ChunkExprCSR_from_npz(count_file);
 
             train_on_chunk(ChunkExprCSR);
         }
     }
+
 }
+
 //chunk level training
 template <typename Scalar>
-void train_on_chunk(const ChunkSparseCSR& chunk_csr){
+void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR& chunk_csr){
 
-    BatchCreator bc = BatchCreator(chunk_csr, config.num_batches_to_preload, this->batch_size, config.seed);
+    BatchCreator bc = BatchCreator(chunk_csr);
 
     while(!bc.all_chunks_preloaded){
         this->train_on_batch(bc.get_next_batch());
     }
 }
-
-
-
-void train_on_batch(const BatchCreator::Batch& batch){
+//Batch level training
+template <typename Scalar>
+void Trainer<Scalar>::train_on_batch(const BatchCreator<Scalar>::Batch& batch){
 
     auto recontructed = model.forward_input(batch);
     Scalar loss = loss::SSRMSELoss<Scalar>::compute(reconstructed, batch);
