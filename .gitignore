@@ -40,7 +40,7 @@ CVAE/JobOutputs
 CVAE/configs/*
 !CVAE/configs/sample_training_config.yaml
 CVAE/scripts/slurm_run_cvae_human.sh
-#  Lgacy           #
+#  Legacy           #
 #####################
 Legacy/
 
@@ -48,5 +48,7 @@ Legacy/
 #####################
 **/build
 **/external
+**/Poc_build/
 #local personal venv
 **/venv/
+**/.vscode/
