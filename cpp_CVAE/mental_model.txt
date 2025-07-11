@@ -1,3 +1,5 @@
+//mental_model.txt
+
 python front end:
     ***     
         contains get_npz_chunk_csr_array_pointers() util function that cpp calls,
@@ -22,11 +24,11 @@ cpp backend
         -shuffle chunks_list
         -for chunk in chunks_list
             -pull npz chunk pointers using python util method
-            -BatchCreator(num_preloader, num_workers)
+            -BatchCreator(chunk, num_preloader, num_workers)
+                |___batch crator, immediatly begins preloading batches, 
             -while (BatchCreator not done)
-                -train_on batch()
-                    |___ if each sample gets own thread, switch BatchCreator from (numpy_batch->Eigen_batch) to (numpy_sample->Eigen_sample)
-
+                |__trainer.train_on_batch(BatchCreator::batchQ.top())
+              
                 -write batch level stats
             
             -write chunk level stats
@@ -42,14 +44,25 @@ cpp backend
     ***
     Training loop specs
     ***
-        - chunk_idxs = get num_samples in chunk csr
-        - shuffle && split chunk_idxs into batch sample_idx arrays; i.e. [S,S,S...] -> [ B[S,S], B[S,S], B[S,S], B[S,S] ]
-        - for batch_idxs in batch_list
-            (Either A or B)
-                A: for sample in batch
-                    generate SSR sample from csr pointers
-                    vector<SSR>.pushback(sample)
-                    model forward(sample)
-                        |___computes MSE loss with vector<SSR> targets X dense reconstruction (some compute time to itterate SSR ptrs)
-                    free vector<SSR> (for each batch, R/W sizeof(SSR) * batch size)
+
+        for chunk 
+            BatchCreator bc = BatchCreator(chunk)
+                |___ shuffles splits chunk_ids;
+                    -
+            bc.prelaod_batches()
+                |___ for batch_ids in shuffled_split_chunk_ids
+                        bc.generate_batch(batch_ids)
+                            |___for sample_id in batch_ids{}
+                                    generate SSR sample from csr pointers
+                                    add SSR* to batch Vector
+
+                
+            while( ! bc.all_batches_preloaded){
+                train_on_batch(bc::batchQ.top())
+            }
+
+            train on batch:
+                model forward(batch)
+                    |___computes MSE loss with vector<SSR> targets X dense reconstruction (some compute time to itterate SSR ptrs)
+                free vector<SSR> (for each batch, R/W sizeof(SSR) * batch size)
                

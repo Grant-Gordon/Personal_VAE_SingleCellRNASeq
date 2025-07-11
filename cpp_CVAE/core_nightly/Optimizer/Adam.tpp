@@ -34,7 +34,7 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
 
     for (auto& layer : layers_vector) {
         auto* raw_layer = layer.get();
-        auto* linear = dynamic_cast<LinearLayer<Scalar>*>(raw_layer);
+        auto* linear = dynamic_cast<LinearLayer<Scalar>*>(raw_layer); //TODO: confirm this isn't turning all layers into Linear (what about RELU)
         if (!linear) continue;  // skip non-trainable layers
 
         // === WEIGHTS ===
