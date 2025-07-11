@@ -3,31 +3,34 @@
 #pragma once
 
 #include <vector>
-#include "custom_types.h"
+#include <Eigen/Sparse>
 #include "loss_functions.h"
 #include "Module.h"
 #include "Optimizer.h"
 #include "BatchCreator.h"
-#include "config.hpp"
-#include <Eigen/Sparse>
+#include "custom_types.h"
+#include "config.h"
 
 template <typename Scalar>
 class Trainer{
     public:
         Trainer(Module<Scalar>& model,
             Optimizer<Scalar>& optimizer,
-            int batch_size,
+            const std::vector<std::string>& count_files_list,
+            const std::vector<std::string>& metadata_files_list
             // int num_features TODO: See if I can do some const expr stuff with this. 
         );
         ~Trainer() = default;
         void train();
+        
+        private:
+        Module<Scalar>& model;
+        Optimizer<Scalar>& optimizer;
+        const std::vector<std::string>& count_files_list;
+        const std::vector<std::string>& metadata_files_list;
+        
 
-    private:
-        Module<Scalar>& model_;
-        Optimizer<Scalar>& optimizer_;
-        int batch_size_;
-        int num_features_;
-            
+        void train();
         void train_on_chunk(ChunkExprCSR chunk_csr);
         void train_batch(const std::vector<SingleSparseRow<Scakar>>& batch);
 }
