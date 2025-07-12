@@ -23,7 +23,7 @@ LinearLayer<Scalar>::LinearLayer(
     std::mt19937 gen(config::seed); //TODO: confirm this is RNG I want
 
     this->weights = MatrixD(output_dim, input_dim);
-    this->bias = VectorD::Zero(output_dim);
+    this->bias = VectorD::Zero(output_dim); //TODO confirm biases should Always be init to zeros
 
     for(unsigned int i =0; i < output_dim; ++i){
         this->bias(0, i) = init_fn(input_dim, output_dim, gen); 
