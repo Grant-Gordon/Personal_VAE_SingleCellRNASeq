@@ -4,6 +4,7 @@
 #include "BatchCreator.h"
 #include "custom_types.h"
 #include "get_ChunkExprCSR_from_npz.tpp"
+#include "config.h"
 
 template <typename Scalar>
 Trainer(Module<Scalar>& model,
@@ -19,7 +20,7 @@ Trainer(Module<Scalar>& model,
 void Trainer<Scalar>::train(){
 
 
-    for(epoch : config::training_num_epochs){
+    for(epoch : config::Training__epochs){
         for(count_file: count_files_list){
             
             

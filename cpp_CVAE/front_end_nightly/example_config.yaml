@@ -29,6 +29,7 @@ training:
   output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
   
   optimizer:
+    type: Adam
     beta1: 1
     beta2: 2
     epsilon: 3
