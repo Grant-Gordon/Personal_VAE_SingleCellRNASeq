@@ -6,7 +6,7 @@
 std::vector<std::string> get_matching_files(const std::vector<std::string>& path, const std::string& pattern){
     std::string full_pattern = path + pattern;
 
-    glob_t blob_result;
+    glob_t glob_result;
     glob(full_pattern.c_str(), GLOB_TILDE, nullptr, &glob_result);
     std::vector<std::string> files;
     for (int i = 0; i< glob_result.gl_pathc; ++i){

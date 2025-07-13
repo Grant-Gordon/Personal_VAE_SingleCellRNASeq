@@ -1,98 +1,106 @@
-model:
-  #TODO:somehow specifiy model architecture? 
-  using_metadata: false
-  type: FFN
+Global:
+  seed: 0
+  using_metadata: false #Flag probably wont really be used in the future, but could be useful for debug + pre conditional-layer-implementation
+  scalar: float
+Model:
+  architecture: #Each line should be a layer, with arguements matching the corresponding Layer constructor. 
+    - Linear: ["{num_features}", 512, glorot] 
+    - RELU: []
+    - Linear: [512, 128, florot]
+    - RELU: []
+    - Linear: [128, 512, glorot]
+    - RELU: []
+    - Linear: [ 512, "{num_features}", glorot]
   latent_dim: 128
-  
-training:
+
+Training:
   epochs: 1
   batch_size: 128
   lr: 0.001
   output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
-  device: cuda
-  lambda_l2_penalty: 0.001
   
   Optimizer:
     beta1:
     beta2:
     epsilon:
 
-data:
+Data:
   data_dir: /mnt/projects/debruinz_project/july2024_census_data/subset
-  counts_file:pattern: {species}_counts_[:numeric:].npz
-  metadata_file_pattern: {species}_metadata_[:numeric:].pkl
+  counts_file_pattern: "{species}_counts_*.npz"
+  metadata_file_pattern: "{species}_metadata_*.pkl"
   vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/
   species: human
   chunks_to_preloaded: 0
   batches_to_prelaod: 0
-
-conditional_heads:
+  num_features: "" #TODO: figure out if this can be constexpr
+  
+ConditionalHeads:
   metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/human_vocab_dict.pkl
 
-  metadata_fields:
-    assay:
+  MetadataFields:
+    Assay:
       type: onehot
-    assay_ontology_term_id:
+    AssayOntologyTermId:
       type: IGNORE
-    cell_type:
+    CellType:
       type: embedding
       embedding_dim: 128
-    cell_type_ontology_term_id:
+    CellTypeOntologyTermId:
       type: IGNORE
-    dataset_id:
+    DatasetId:
       type: embedding
       embedding_dim: 128
-    dev_stage:
+    DevStage:
       type: onehot
-    development_stage:
+    DevelopmentStage:
       type: embedding
       embedding_dim: 128
-    development_stage_ontology_term_id:
+    DevelopmentStageOntologyTermId:
       type: IGNORE
-    disease:
+    Disease:
       type: embedding
       embedding_dim: 128
-    disease_ontology_term_id:
+    DiseaseOntologyTermId:
       type: IGNORE
-    donor_id:
+    DonorId:
       type: embedding
       embedding_dim: 128
-    is_primary_data:
+    IsPrimaryData:
       type: IGNORE
-    n_measured_vars:
+    NMeasuredVars:
       type: IGNORE
-    nnz:
+    Nnz:
       type: IGNORE
-    observation_joinid:
+    ObservationJoinid:
       type: IGNORE
-    raw_mean_nnz:
+    RawMeanNnz:
       type: IGNORE
-    raw_sum:
+    RawSum:
       type: IGNORE
-    raw_variance_nnz:
+    RawVarianceNnz:
       type: IGNORE
-    self_reported_ethnicity:
+    SelfReportedEthnicity:
       type: embedding
       embedding_dim: 128
-    self_reported_ethnicity_ontology_term_id:
+    SelfReportedEthnicityOntologyTermId:
       type: IGNORE
-    sex:
+    Sex:
       type: onehot
-    sex_ontology_term_id:
+    SexOntologyTermId:
       type: IGNORE
-    soma_joinid:
+    SomaJoinid:
       type: IGNORE
-    suspension_type:
+    SuspensionType:
       type: onehot
-    tissue:
+    Tissue:
       type: embedding
       embedding_dim: 128
-    tissue_general:
+    TissueGeneral:
       type: embedding
       embedding_dim: 128
-    tissue_general_ontology_term_id:
+    TissueGeneralOntologyTermId:
       type: IGNORE
-    tissue_ontology_term_id:
+    TissueOntologyTermId:
       type: IGNORE
-    tissue_type:
+    TissueType:
       type: IGNORE

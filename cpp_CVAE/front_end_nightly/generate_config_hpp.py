@@ -14,7 +14,7 @@ def write_config_header(config: dict, output_path: str = "config.h"):
     flat_config = flatten_dict(config)
 
 
-    lines = ["#pragma once", "", "#include <string_view>", "", "namespace config {"]
+    lines = ["//config.h" ,"#pragma once", "", "#include <string_view>", "", "namespace config {"]
     for key, val in flat_config.items():
         if isinstance(val, bool):
             cpp_val = "true" if val else "false"
@@ -25,9 +25,7 @@ def write_config_header(config: dict, output_path: str = "config.h"):
             lines.append(f"\tstatic constexpr float {key} = {val};")#TODO does this handle doubles?
         elif isinstance(val, str):
             lines.append(f"\tstatic constexpr str {key} = {val};")
-        elif isinstance(val, list):
-            array_elements = ", ".join(str(x) for x in val)
-            lines.append(f"\tconstexpr std::array<int,{len(val)}> {key} = {array_elements};")
+    
         
         else:
             raise ValueError(f"Unsupported config values {key} = {val} (type {type(val)})")

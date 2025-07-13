@@ -51,7 +51,7 @@ class LinearLayer : public Layer<Scalar>{
         VectorD bias;      
         
         MatrixD input_cache;
-        std::optional<SingleSparseRow<Scalar>> input_cache_sparse;
+        std::optional<SingleSparseRow<Scalar>> input_cache_sparse; //TODO: defintyl caching this wrong needs handling in the future(should cache full batch not just single sampples but threading is wack )
 
         MatrixD grad_weights;
         VectorD grad_bias;
