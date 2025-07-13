@@ -1,18 +1,40 @@
 #example_config.yaml
 
-#***************************************************************************************************************
- 
-# +++ USAGE +++
-#   -keys must be in snake_case. 
-#   -Place holders can be spcified with '{key}' and '.' to specify yaml-heirarchy e.g. "foo: {bar.baz.key}"
-#***************************************************************************************************************
+# ---------------------------------------------------------
+# YAML → config.h Generator Guide (used by generate_config_hpp.py)
+# ---------------------------------------------------------
+#
+#  Key Format:
+#   - Keys use snake_case; nesting defines hierarchy.
+#   - Becomes C++: CapitalCamelCase__snake_case
+#     e.g. training.optimizer.beta1 → Training_Optimizer__beta1
+#
+#  Value Rules:
+#   - Scalars → constexpr (int, float, bool, str).
+#   - Lists of layers → use `construct: architecture` + `layers: [...]`.
+#   - Typed objects → use `construct: object` + `type:` + args.
+#   - To flatten nested fields instead: use `construct: false`.
+#
+#  Placeholder Support:
+#   - Strings like "{data.input_features}" will be interpolated.
+#   - External values can be passed via `external_context` in Python and will overwrite if the key already exists
+#
+#  Output:
+#   - All config is emitted under `namespace config { ... }` in C++.
+#   - Layer arrays: constexpr std::array<std::shared_ptr<Layer<Scalar>>>.
+#   - Objects: constexpr <Type<Scalar>> = Type<Scalar>(args...);
+#
+#  Maintained via supported_types.py:
+#   - Lists supported optimizers, layer types, initializers, etc.
+#
 
 global:
   seed: 0
   using_metadata: false #Flag probably wont really be used in the future, but could be useful for debug + pre conditional-layer-implementation
   scalar: float
 model:
-  architecture: #Each line should be a layer, with arguements matching the corresponding Layer constructor. 
+  construct: architecture #Each line should be a layer, with arguements matching the corresponding Layer constructor. 
+  layers:
     - Linear: ["{data.num_features}", 512, glorot] 
     - RELU: []
     - Linear: [512, 128, glorot]
@@ -29,6 +51,7 @@ training:
   output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
   
   optimizer:
+    construct: object
     type: Adam
     beta1: 1
     beta2: 2
@@ -42,7 +65,7 @@ data:
   species: human
   chunks_to_preload: 0
   batches_to_prelaod: 0
-  num_features: "999" #TODO: figure out if this can be constexpr
+  num_features: 999 #TODO: figure out if this can be constexpr
   
 conditional_heads:
   metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/human_vocab_dict.pkl
@@ -114,3 +137,18 @@ conditional_heads:
       type: IGNORE
     tissue_type:
       type: IGNORE
+
+random_test_architecture:
+  dummy_cvae:
+    dummy_value: 5
+    model:
+      construct: architecture #Each line should be a layer, with arguements matching the corresponding Layer constructor. 
+      layers:
+        - Linear: ["{data.num_features}", 888, glorot] 
+        - RELU: []
+        - Linear: [888, 888, glorot]
+        - RELU: []
+        - Linear: [888, 888, glorot]
+        - RELU: []
+        - Linear: [ 888, "{data.num_features}", glorot]
+      latent_dim: 777

@@ -16,7 +16,7 @@ void main(){
     std::vector<std::string> metadata_files_list = generate_file_lists(config::data_dir, config::metadata_glob);
 
     Module<config::Global__scalar> model = Module<config::Gloabl__scalar>(config::Model_Architecture__layers_vector);
-    Optimizer<config::Global__scalar> optim = config::Training_optimizer
+    Optimizer<config::Global__scalar> optim = config::Training__optimizer
     
     Trainer(model, optim, counts_files_list, metadata_files_list);
     Trainer.train();
