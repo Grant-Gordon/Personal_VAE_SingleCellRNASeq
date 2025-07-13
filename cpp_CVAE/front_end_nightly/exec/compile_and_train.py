@@ -1,9 +1,15 @@
 # compile_and_train.py
 import os
 import subprocess
-from config import config_parser
+import yaml
+#from config.config_parser import parse_config
 from config.generate_config_hpp import write_config_header
 
+
+def load_yaml(path: str) -> dict:
+    with open(path, 'r') as f:
+        return yaml.safe_load(f)
+    
 def build_metadata_vocab(config):
     # TODO: implement metadata vocabulary builder
     pass
@@ -18,10 +24,10 @@ def run_cpp_executable(build_dir="build", binary_name="main"):
     subprocess.run([binary_path], check=True)
 
 if __name__ == "__main__":
-    config_path = "config.yaml"
-    config = config_parser(config_path)
+    config_path = "./config/example_config.yaml"
+    config = load_yaml(config_path)
 
     build_metadata_vocab(config)
     write_config_header(config_path, "config.h")  # external_context optional
     build_cpp_backend()
-    run_cpp_executable()
+    #run_cpp_executable() #uncomment to train. 

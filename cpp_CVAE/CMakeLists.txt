@@ -10,7 +10,10 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/core_nightly/Loss
     ${PROJECT_SOURCE_DIR}/core_nightly/Module
     ${PROJECT_SOURCE_DIR}/core_nightly/Optimizer
-    ${PROJECT_SOURCE_DIR}/core_nightly/PoC_trainer
+    #${PROJECT_SOURCE_DIR}/core_nightly/PoC_trainer
+    ${PROJECT_SOURCE_DIR}/core_nightly/Training
+    ${PROJECT_SOURCE_DIR}/core_nightly/exec
+    ${PROJECT_SOURCE_DIR}/core_nightly/utils
     ${PROJECT_SOURCE_DIR}/external/eigen
 )
 
