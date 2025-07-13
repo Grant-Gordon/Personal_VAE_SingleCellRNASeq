@@ -29,6 +29,8 @@
 #
 
 global:
+  build_dir: /home/grant/research/czi/Personal_VAE_SingleCellRNASeq/cpp_CVAE/Builds/MVP_build/
+  CMakeLists_home_dir: /home/grant/research/czi/Personal_VAE_SingleCellRNASeq/cpp_CVAE/
   seed: 0
   using_metadata: false #Flag probably wont really be used in the future, but could be useful for debug + pre conditional-layer-implementation
   scalar: float
@@ -48,7 +50,7 @@ training:
   epochs: 1
   batch_size: 128
   lr: 0.001
-  output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
+  output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/cpp_CVAE/JobOutputs
   
   optimizer:
     construct: object
@@ -61,14 +63,14 @@ data:
   data_dir: /mnt/projects/debruinz_project/july2024_census_data/subset
   counts_file_pattern: "{data.species}_counts_*.npz"
   metadata_file_pattern: "{data.species}_metadata_*.pkl"
-  vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/
+  vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/cpp_CVAE/preprocessed_data/
   species: human
   chunks_to_preload: 0
   batches_to_prelaod: 0
   num_features: 999 #TODO: figure out if this can be constexpr
   
 conditional_heads:
-  metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/human_vocab_dict.pkl
+  metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/cpp_CVAE/preprocessed_data/human_vocab_dict.pkl
 
   metadata_fields:
     assay:

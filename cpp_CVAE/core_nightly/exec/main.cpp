@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "Layer_all.h"
-#include "Opimizer_all.h"
+#include "Optimizer_all.h"
 #include "Module.h"
 #include "Trainer.h"
 #include "utils_all.h"

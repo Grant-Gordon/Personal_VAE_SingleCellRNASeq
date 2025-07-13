@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Include header files
 include_directories(
+    ${PROJECT_BINARY_DIR}
     ${PROJECT_SOURCE_DIR}/core_nightly/Layers
     ${PROJECT_SOURCE_DIR}/core_nightly/Layers/Activation_Layers
     ${PROJECT_SOURCE_DIR}/core_nightly/Loss
@@ -19,5 +20,5 @@ include_directories(
 
 # Add your executable
 add_executable(PoC_trainer_exec
-    core_nightly/PoC_trainer/main.cpp
+    core_nightly/exec/main.cpp
 )

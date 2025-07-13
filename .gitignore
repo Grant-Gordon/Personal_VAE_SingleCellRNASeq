@@ -49,6 +49,7 @@ Legacy/
 **/build
 **/external
 **/Poc_build/
+**/Builds
 #local personal venv
 **/venv/
 **/.vscode/

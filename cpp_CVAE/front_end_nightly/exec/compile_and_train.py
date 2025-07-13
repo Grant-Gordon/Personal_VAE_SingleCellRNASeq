@@ -14,20 +14,25 @@ def build_metadata_vocab(config):
     # TODO: implement metadata vocabulary builder
     pass
 
-def build_cpp_backend(build_dir="build"):
+def build_cpp_backend(build_dir, CMakeList_home_dir):
     os.makedirs(build_dir, exist_ok=True)
-    subprocess.run(["cmake", ".."], cwd=build_dir, check=True)
+    subprocess.run(["cmake", f"{CMakeList_home_dir}"], cwd=build_dir, check=True)
     subprocess.run(["make", "-j"], cwd=build_dir, check=True)
 
-def run_cpp_executable(build_dir="build", binary_name="main"):
+def run_cpp_executable(build_dir, binary_name="main"):
     binary_path = os.path.join(build_dir, binary_name)
     subprocess.run([binary_path], check=True)
 
 if __name__ == "__main__":
-    config_path = "./config/example_config.yaml"
-    config = load_yaml(config_path)
+    config_yaml_path = "./config/example_config.yaml" #TODO: ARG parse this to prevent hardcoding config paths. 
+    config = load_yaml(config_yaml_path)
+    build_dir = config["global"]["build_dir"]
+    CMakeLists_home_dir  = config["global"]["CMakeLists_home_dir"]
+
+
+    os.makedirs(build_dir, exist_ok=True)
 
     build_metadata_vocab(config)
-    write_config_header(config_path, "config.h")  # external_context optional
-    build_cpp_backend()
-    #run_cpp_executable() #uncomment to train. 
+    write_config_header(config_yaml_path, f'{build_dir}/config.h')  # external_context optional
+    build_cpp_backend(build_dir, CMakeLists_home_dir) 
+    #run_cpp_executable(config["global"]["build_dir"]) #uncomment to train. 

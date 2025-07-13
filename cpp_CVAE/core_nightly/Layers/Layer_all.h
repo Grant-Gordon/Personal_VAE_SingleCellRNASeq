@@ -3,4 +3,4 @@
 #include "Layer.h"
 #include "LinearLayer.h"
 #include "RELU.h"
-#include "praram_init_utils.h"
+#include "param_init_utils.h"
