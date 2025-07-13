@@ -1,106 +1,115 @@
-Global:
+#example_config.yaml
+
+#***************************************************************************************************************
+ 
+# +++ USAGE +++
+#   -keys must be in snake_case. 
+#   -Place holders can be spcified with '{key}' and '.' to specify yaml-heirarchy e.g. "foo: {bar.baz.key}"
+#***************************************************************************************************************
+
+global:
   seed: 0
   using_metadata: false #Flag probably wont really be used in the future, but could be useful for debug + pre conditional-layer-implementation
   scalar: float
-Model:
+model:
   architecture: #Each line should be a layer, with arguements matching the corresponding Layer constructor. 
-    - Linear: ["{num_features}", 512, glorot] 
+    - Linear: ["{data.num_features}", 512, glorot] 
     - RELU: []
-    - Linear: [512, 128, florot]
+    - Linear: [512, 128, glorot]
     - RELU: []
     - Linear: [128, 512, glorot]
     - RELU: []
-    - Linear: [ 512, "{num_features}", glorot]
+    - Linear: [ 512, "{data.num_features}", glorot]
   latent_dim: 128
 
-Training:
+training:
   epochs: 1
   batch_size: 128
   lr: 0.001
   output_dir: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/JobOutputs
   
-  Optimizer:
-    beta1:
-    beta2:
-    epsilon:
+  optimizer:
+    beta1: 1
+    beta2: 2
+    epsilon: 3
 
-Data:
+data:
   data_dir: /mnt/projects/debruinz_project/july2024_census_data/subset
-  counts_file_pattern: "{species}_counts_*.npz"
-  metadata_file_pattern: "{species}_metadata_*.pkl"
+  counts_file_pattern: "{data.species}_counts_*.npz"
+  metadata_file_pattern: "{data.species}_metadata_*.pkl"
   vocab_builder_out: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/
   species: human
-  chunks_to_preloaded: 0
+  chunks_to_preload: 0
   batches_to_prelaod: 0
-  num_features: "" #TODO: figure out if this can be constexpr
+  num_features: "999" #TODO: figure out if this can be constexpr
   
-ConditionalHeads:
+conditional_heads:
   metadata_vocab: /mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/CVAE/preprocessed_data/human_vocab_dict.pkl
 
-  MetadataFields:
-    Assay:
+  metadata_fields:
+    assay:
       type: onehot
-    AssayOntologyTermId:
+    assay_ontology_term_id:
       type: IGNORE
-    CellType:
+    cell_type:
       type: embedding
       embedding_dim: 128
-    CellTypeOntologyTermId:
+    cell_type_ontology_term_id:
       type: IGNORE
-    DatasetId:
+    dataset_id:
       type: embedding
       embedding_dim: 128
-    DevStage:
+    dev_stage:
       type: onehot
-    DevelopmentStage:
+    development_stage:
       type: embedding
       embedding_dim: 128
-    DevelopmentStageOntologyTermId:
+    development_stage_ontology_term_id:
       type: IGNORE
-    Disease:
+    disease:
       type: embedding
       embedding_dim: 128
-    DiseaseOntologyTermId:
+    disease_ontology_term_id:
       type: IGNORE
-    DonorId:
+    donor_id:
       type: embedding
       embedding_dim: 128
-    IsPrimaryData:
+    is_primary_data:
       type: IGNORE
-    NMeasuredVars:
+    n_measured_vars:
       type: IGNORE
-    Nnz:
+    nnz:
       type: IGNORE
-    ObservationJoinid:
+    observation_joinid:
       type: IGNORE
-    RawMeanNnz:
+    raw_mean_nnz:
       type: IGNORE
-    RawSum:
+    raw_sum:
       type: IGNORE
-    RawVarianceNnz:
+    raw_variance_nnz:
       type: IGNORE
-    SelfReportedEthnicity:
+    self_reported_ethnicity:
       type: embedding
       embedding_dim: 128
-    SelfReportedEthnicityOntologyTermId:
+    self_reported_ethnicity_ontology_term_id:
       type: IGNORE
-    Sex:
+    sex:
       type: onehot
-    SexOntologyTermId:
+    sex_ontology_term_id:
       type: IGNORE
-    SomaJoinid:
+    soma_joinid:
       type: IGNORE
-    SuspensionType:
+    suspension_type:
       type: onehot
-    Tissue:
+    tissue:
       type: embedding
       embedding_dim: 128
-    TissueGeneral:
+    tissue_general:
       type: embedding
       embedding_dim: 128
-    TissueGeneralOntologyTermId:
+    tissue_general_ontology_term_id:
       type: IGNORE
-    TissueOntologyTermId:
+    tissue_ontology_term_id:
       type: IGNORE
-    TissueType:
+    tissue_type:
       type: IGNORE
