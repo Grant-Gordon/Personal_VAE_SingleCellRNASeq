@@ -136,4 +136,4 @@ def write_config_header(yaml_path:str,  output_path: str= "config.h", external_c
 
 #test use
 if __name__ == "__main__":
-    write_config_header("example_config.yaml", "config.h", external_context={"data.input_features:": 1000})
+    write_config_header("example_config.yaml", "example_config.h", external_context={"data.input_features:": 1000})
