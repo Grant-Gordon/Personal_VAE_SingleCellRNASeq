@@ -1,14 +1,11 @@
 #pragma once
 
 #include "config.h"
+#include "Layer_all.h"
+#include "Opimizer_all.h"
 #include "Module.h"
-#include "MSE.h"
-#include "Adam.h"
 #include "Trainer.h"
-#include "RELU.h"
-#include "param_init_utils.h"
-#include "custom_types.h"
-#include "generate_file_list.cpp"
+#include "utils_all.h"
 
 void main(){
 

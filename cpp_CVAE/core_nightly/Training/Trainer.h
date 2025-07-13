@@ -6,7 +6,7 @@
 #include <Eigen/Sparse>
 #include "loss_functions.h"
 #include "Module.h"
-#include "Optimizer.h"
+#include "Optimizer_all.h"
 #include "BatchCreator.h"
 #include "custom_types.h"
 #include "config.h"

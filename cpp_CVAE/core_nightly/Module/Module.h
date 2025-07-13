@@ -3,8 +3,7 @@
 
 #include <vector>
 #include <memory>
-#include "Layer.h"
-#include "LinearLayer.h"
+#include "Layer_all.h"
 #include "custom_types.h"
 #include "config.h"
 
