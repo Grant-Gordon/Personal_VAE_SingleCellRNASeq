@@ -1,5 +1,4 @@
-#pragma once
-
+#include <typeinfo>
 #include "config.h"
 #include "Layer_all.h"
 #include "Optimizer_all.h"
@@ -7,15 +6,19 @@
 #include "Trainer.h"
 #include "utils_all.h"
 
-void main(){
+int main(){
 
-    std::vector<std::string> counts_files_list = generate_file_lists(config::data_dir, config::counts_glob);
-    std::vector<std::string> metadata_files_list = generate_file_lists(config::data_dir, config::metadata_glob);
+    using scalar = typeid(config::Global__scalar);
 
-    Module<config::Global__scalar> model = Module<config::Gloabl__scalar>(config::Model_Architecture__layers_vector);
-    Optimizer<config::Global__scalar> optim = config::Training__optimizer
+    std::vector<std::string> counts_files_list = get_matching_files(config::Data__data_dir, config::Data__counts_file_pattern);
+    std::vector<std::string> metadata_files_list = get_matching_files(config::Data__data_dir, config::Data__metadata_file_pattern);
+
+    Module<scalar> model = Module<scalar>(config::Model__basic_auto_encoder);
+    Optimizer<scalar> optim = config::Training__optimizer;
     
-    Trainer(model, optim, counts_files_list, metadata_files_list);
-    Trainer.train();
+    Trainer<scalar> trainer(model, optim, counts_files_list, metadata_files_list);
+    trainer.train();
+
+    return 0;
 
 }

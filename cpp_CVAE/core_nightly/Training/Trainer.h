@@ -32,7 +32,7 @@ class Trainer{
 
         void train();
         void train_on_chunk(ChunkExprCSR chunk_csr);
-        void train_batch(const std::vector<SingleSparseRow<Scakar>>& batch);
+        void train_batch(const std::vector<SingleSparseRow<Scalar>>& batch);
 }
 
 

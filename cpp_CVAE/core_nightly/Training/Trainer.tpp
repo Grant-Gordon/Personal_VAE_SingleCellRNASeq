@@ -1,6 +1,6 @@
 //Trainer.tpp
 #pragma once
-#include <pybind11> 
+#include <pybind11/pybind11.h> 
 #include "BatchCreator.h"
 #include "custom_types.h"
 #include "get_ChunkExprCSR_from_npz.tpp"
@@ -18,12 +18,9 @@ Trainer(Module<Scalar>& model,
     metadata_files_list(metadata_files_list)
 {}
 void Trainer<Scalar>::train(){
-
-
-    for(epoch : config::Training__epochs){
-        for(count_file: count_files_list){
-            
-            
+    for(int epoch = 0; epoch < config::Training__epochs; ++epoch){
+        
+        for(std::string count_file : count_files_list){
             ChunkExprCSR<Scalar> chunk_csr = get_ChunkExprCSR_from_npz(count_file);
 
             train_on_chunk(ChunkExprCSR);

@@ -1,7 +1,6 @@
 //BatchCreator.h
 #pragma once
 #include <vector>
-#include <pybind11/numpy.h>
 #include <algorithm> //std::shuffle
 #include <queue>
 #include <thread>
@@ -39,7 +38,7 @@ class BatchCreator{
         std::thread preload_thread; 
         bool all_batches_preloaded;
 
-        //TODO: maybe just drop final batch, kinda makes a headache with forward passes ngl 
+        //TODO: must calculate final_batch_size :((((((((((((((
         int final_batch_size;
 
         void preload_batches();
