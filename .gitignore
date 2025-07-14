@@ -49,6 +49,7 @@ Legacy/
 **/build
 **/external
 **/Poc_build/
+**/*PoC*/
 **/Builds
 #local personal venv
 **/venv/
