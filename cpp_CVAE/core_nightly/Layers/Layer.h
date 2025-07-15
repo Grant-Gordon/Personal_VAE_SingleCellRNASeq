@@ -10,10 +10,10 @@ class Layer{
     public: 
 
         //Dense X Dense
-        virtual MatrixD forward(const MatrixD& input ) = 0; 
+        virtual MatrixD<Scalar> forward(const MatrixD<Scalar>& input ) = 0; 
 
         //Input was Dense
-        virtual MatrixD backward(const MatrixD& grad_output) = 0; 
+        virtual MatrixD<Scalar> backward(const MatrixD<Scalar>& grad_output) = 0; 
         
         virtual void update_weights(Scalar learning_rate) {};
 

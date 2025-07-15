@@ -22,38 +22,38 @@ class LinearLayer : public Layer<Scalar>{
             );
 
         //Standard Dense
-        MatrixD forward(const MatrixD& input) override;
-        MatrixD backward(const MatrixD& grad_output) override;
+        MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
+        MatrixD<Scalar> backward(const MatrixD<Scalar>& grad_output) override;
         
         //Custom Sparse
-        VectorD forward(const SingleSparseRow<Scalar>& input);
-        VectorD backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input);
+        VectorD<Scalar> forward(const SingleSparseRow<Scalar>& input);
+        VectorD<Scalar> backward(const VectorD<Scalar>& upstream_grad, const SingleSparseRow<Scalar>& input);
         
         void update_weights(Scalar learning_rate) override;
 
         //Getters
         bool has_trainable_params() const  override {return true;}
 
-        const MatrixD& get_weights() const;
-        MatrixD& get_weights(); 
-        const MatrixD& get_grad_weights() const;
+        const MatrixD<Scalar>& get_weights() const;
+        MatrixD<Scalar>& get_weights(); 
+        const MatrixD<Scalar>& get_grad_weights() const;
         
-        const VectorD& get_bias() const;
-        VectorD& get_bias();
-        const VectorD& get_grad_bias() const;
+        const VectorD<Scalar>& get_bias() const;
+        VectorD<Scalar>& get_bias();
+        const VectorD<Scalar>& get_grad_bias() const;
 
         ~LinearLayer() override = default;
 
     private: 
         //TODO: point of optimization -  Could potentially infer matrices size from templates for compile time loop unrolling. 
-        MatrixD weights;
-        VectorD bias;      
+        MatrixD<Scalar> weights;
+        VectorD<Scalar> bias;      
         
-        MatrixD input_cache;
+        MatrixD<Scalar> input_cache;
 
-        MatrixD grad_weights;
-        VectorD grad_bias;
-        //MatrixD grad_inputs;//TODO: maybe not really necessary
+        MatrixD<Scalar> grad_weights;
+        VectorD<Scalar> grad_bias;
+        //MatrixD<Scalar> grad_inputs;//TODO: maybe not really necessary
 };
 
 #include "LinearLayer.tpp"

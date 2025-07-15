@@ -40,7 +40,7 @@ class BatchCreator{
 
         void preload_batches();
         void generate_shuffled_split_batch_ids();
-        const Batch& generate_batch(int* batch_sample_ids, int actual_batch_size); //Thread target, pushes to preloaded_batch queue, 
+        const Batch<Scalar>& generate_batch(int* batch_sample_ids, int actual_batch_size); //Thread target, pushes to preloaded_batch queue, 
 }
 
 #include "BatchCreator.tpp"

@@ -17,6 +17,8 @@ Trainer<Scalar>::Trainer(Module<Scalar>& model,
     count_files_list(count_files_list)
     metadata_files_list(metadata_files_list)
 {}
+
+template <typename Scalar>
 void Trainer<Scalar>::train(){
     for(int epoch = 0; epoch < config::Training__epochs; ++epoch){
         //TODO: shuffle chunks 
@@ -31,7 +33,7 @@ void Trainer<Scalar>::train(){
 
 //chunk level training
 template <typename Scalar>
-void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR& chunk_csr){
+void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr){
 
     BatchCreator bc = BatchCreator(chunk_csr);
 
@@ -41,7 +43,7 @@ void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR& chunk_csr){
 }
 //Batch level training
 template <typename Scalar>
-void Trainer<Scalar>::train_on_batch(const Batch& batch){
+void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
 
     auto recontructed = model.forward_input(batch);
     Scalar loss = loss::SSRMSELoss<Scalar>::compute(reconstructed, batch);

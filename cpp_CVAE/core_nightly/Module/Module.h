@@ -19,9 +19,9 @@ class Module{
 
         void add_layer(std::shared_ptr<Layer<Scalar>> layer);
 
-        MatrixD forward(const MatrixD&, Batch& batch);
+        MatrixD<Scalar> forward(const MatrixD<Scalar>&, Batch& batch);
 
-        MatrixD backward(const MatrixD upstream_grad, const Batch& batch_input);
+        MatrixD<Scalar> backward(const MatrixD<Scalar> upstream_grad, const Batch<Scalar>& batch_input);
 
         void update_weights();
         

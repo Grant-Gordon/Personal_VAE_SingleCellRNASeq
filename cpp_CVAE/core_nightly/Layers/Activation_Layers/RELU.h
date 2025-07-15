@@ -12,11 +12,11 @@ class RELULayer: public Layer<Scalar>{
         RELULayer() = default;
         ~RELULayer() override = default;
 
-        MatrixD forward(const MatrixD& input) override; //TODO: point of optimization - may be able to overload forward and pacward to pass rvals using move semantics to avoid copies
-        MatrixD backward(const <MatrixD>& grad_output) override;
+        MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override; //TODO: point of optimization - may be able to overload forward and pacward to pass rvals using move semantics to avoid copies
+        MatrixD<Scalar> backward(const MatrixD<Scalar>& grad_output) override;
 
     private:
-        MatrixD input_cache;
+        MatrixD<Scalar> input_cache;
 
         
 

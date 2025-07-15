@@ -21,11 +21,11 @@ class Adam : public Optimizer<Scalar>{
         int timestep;
 
         struct ParamState{
-            MatrixD m; // exponential moving avg of gradients
-            MatrixD v; // exponential moving average of squared gradients (second moment)
+            MatrixD<Scalar> m; // exponential moving avg of gradients
+            MatrixD<Scalar> v; // exponential moving average of squared gradients (second moment)
         };
 
-        std::unordered_map<Layer<Scalar>*, ParamState> weight_state; //TODO: where tf is param state
+        std::unordered_map<Layer<Scalar>*, ParamState> weight_state; 
         std::unordered_map<Layer<Scalar>*, ParamState> bias_state;
 
 

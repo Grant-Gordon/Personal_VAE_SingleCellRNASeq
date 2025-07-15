@@ -31,8 +31,8 @@ class Trainer{
         
 
         void train();
-        void train_on_chunk(ChunkExprCSR chunk_csr);
-        void train_batch(const Batch& batch);
+        void train_on_chunk(ChunkExprCSR<Scalar> chunk_csr);
+        void train_batch(const Batch<Scalar>& batch);
 }
 
 

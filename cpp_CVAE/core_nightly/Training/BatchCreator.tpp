@@ -39,7 +39,7 @@ void BatchCreator<Scalar>::preload_batches(){
             if (this->stop_flag){break;}
         }
         //dont need mutex for batch generation
-        Batch batch = this->generate_batch(this->shuffled_split_batch_ids[i], actual_batch_size);
+        Batch<Scalar> batch = this->generate_batch(this->shuffled_split_batch_ids[i], actual_batch_size);
         {//do need mutex for pushing to queue 
             
             std::unique_lock<std::mutex> lock(queue_mutex);
@@ -54,9 +54,9 @@ void BatchCreator<Scalar>::preload_batches(){
 
 //NOTE: actual_batch_size != batch_size, the final batch in a chunk may be smaller than batch_size if chunk_samples % batch_size != 0
 template <typename Scalar>
-Batch BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){
+Batch<Scalar> BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){//TODO: actual input_batch size not really used anoymore is it?
     // construct SSR samples corresponding to the batch sample ids in the chunk csr, and push to a vector
-    Batch batch;
+    Batch<Scalar> batch;
     batch.reserve(actual_batch_size); //TODO: size is not valid 
 
     //TODO: confirm this doesn't break with batches smaller than batchsize 
@@ -101,7 +101,7 @@ void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
 }
 
 template <typename Scalar>
-Batch BatchCreator<Scalar>::get_next_batch(){
+Batch<Scalar> BatchCreator<Scalar>::get_next_batch(){
     std::unique_lock<std::mutex> lock(this->queue_mutex); //RAII
     queue_cv.wait(lock, [this](){ //[&] means capture all local vars by reference (local vars visible to lambda)
         return !preloaded_batch_queue.empty() || all_batches_preloaded || this->stop_flag; //wait until not empty or finished 
