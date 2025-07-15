@@ -1,3 +1,4 @@
+#include <type_traits>
 #include "config.h"
 #include "Layer_all.h"
 #include "Optimizer_all.h"
@@ -8,7 +9,7 @@
 
 int main(){
 
-    using scalar = decltype(config::Global__scalar);
+    using scalar = std::remove_const_t<decltype(config::Global__scalar)>;
 
     std::vector<std::string> counts_files_list = get_matching_files(std::string(config::Data__data_dir), std::string(config::Data__counts_file_pattern)); //TODO: why doesn't this function just accept string_view. if were going for compile time, lets keep it compile time. 
     std::vector<std::string> metadata_files_list = get_matching_files(std::string(config::Data__data_dir), std::string(config::Data__metadata_file_pattern));

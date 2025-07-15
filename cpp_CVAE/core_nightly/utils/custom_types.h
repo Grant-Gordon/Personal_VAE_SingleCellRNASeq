@@ -1,5 +1,7 @@
 //custom_types.h
 #pragma once
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 
 template <typename Scalar>
 using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
@@ -19,9 +21,9 @@ template <typename Scalar>
 struct ChunkExprCSR{
     pybind11::array_t<Scalar> vals_ptr_py;
     pybind11::array_t<int> cols_ptr_py;
-    pybind11::array_t<int> idxptr_ptr_py;
+    pybind11::array_t<int> indptr_ptr_py;
 
-    const Scalar* vals_data;
+    const Scalar* vals_ptr_data;
     const int* cols_ptr_data;
     const int* indptr_ptr_data;
     
@@ -42,7 +44,7 @@ struct ChunkExprCSR{
     nnz(nnz)
     {
         vals_ptr_data = vals_ptr_py.data();
-        vols_ptr_data = cols_ptr_py.data();
+        cols_ptr_data = cols_ptr_py.data();
         indptr_ptr_data = indptr_ptr_py.data();
     }
 };

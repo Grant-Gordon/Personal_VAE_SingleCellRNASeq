@@ -20,8 +20,8 @@ LinearLayer<Scalar>::LinearLayer(
 
     std::mt19937 gen(config::Global__seed); //TODO: confirm this is RNG I want
 
-    this->weights = MatrixD(output_dim, input_dim);
-    this->bias = VectorD::Zero(output_dim); //TODO confirm biases should Always be init to zeros
+    this->weights = MatrixD<Scalar>(output_dim, input_dim);
+    this->bias = VectorD<Scalar>::Zero(output_dim); //TODO confirm biases should Always be init to zeros
 
     for(unsigned int i =0; i < output_dim; ++i){
         this->bias(0, i) = init_fn(input_dim, output_dim, gen); 
@@ -36,7 +36,7 @@ LinearLayer<Scalar>::LinearLayer(
 
 //Forward Dense - all layers except input layer will use this dense X dense
 template <typename Scalar>
-MatrixD LinearLayer<Scalar>::forward(const MatrixD& input){
+MatrixD<Scalar> LinearLayer<Scalar>::forward(const MatrixD<Scalar>& input){
     this->input_cache = input;
     //y = xW^T + b (broadcasted): where input = (batch_size X features), W = (inputFeature X outputFeature), bias = (1 X output_size), input*W = (batch_size X output_features)
     return (input * this->weights.transpose()).rowwise() + this->bias.transpose();
@@ -44,7 +44,7 @@ MatrixD LinearLayer<Scalar>::forward(const MatrixD& input){
 
 //Backward  Dense - all layers except input layer will use this dense X dense
 template <typename Scalar>
-MatrixD LinearLayer<Scalar>::backward(const MatrixD& upstream_grad){
+MatrixD<Scalar> LinearLayer<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
     //B = batch_size, in_d & out_d = this layers input & ouput dimensionality 
     
     //upstream_grad [B * out_d]
@@ -90,7 +90,7 @@ MatrixD LinearLayer<Scalar>::backward(const MatrixD& upstream_grad){
 
 //Forward Sparse Row - Custom forward for handling the sparse inputs of the first Linear Layer
 template <typename Scalar>
-VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
+VectorD<Scalar> LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
     
     VectorD output = this->bias;
        
@@ -105,7 +105,7 @@ VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
 
 //Backward Sparse Row - Custom backward for handling the SingleSparseRow inputs of the first Linear Layer
 template <typename Scalar>
-VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input){
+VectorD<Scalar> LinearLayer<Scalar>::backward(const VectorD<Scalar>& upstream_grad, const SingleSparseRow<Scalar>& input){
     //upstream_grad [out_d * 1] = dL/dy_i for this particular SSR
     //weights [out_d * in_d]
     // bias [out_d * 1]
@@ -179,34 +179,34 @@ void LinearLayer<Scalar>::update_weights(Scalar learning_rate){
 
 //Getters - weights
 template <typename Scalar>
-MatrixD& LinearLayer<Scalar>::get_weights(){
+MatrixD<Scalar>& LinearLayer<Scalar>::get_weights(){
     return  this->weights;
 }
 
 template <typename Scalar>
-const MatrixD& LinearLayer<Scalar>::get_weights() const{
+const MatrixD<Scalar>& LinearLayer<Scalar>::get_weights() const{
     return  this->weights;
 }
 
 template <typename Scalar>
-const MatrixD& LinearLayer<Scalar>::get_grad_weights() const{
+const MatrixD<Scalar>& LinearLayer<Scalar>::get_grad_weights() const{
     return  this->grad_weights;
 }
 
 //Getters - biases
 
 template <typename Scalar>
-VectorD& LinearLayer<Scalar>::get_bias(){
+VectorD<Scalar>& LinearLayer<Scalar>::get_bias(){
     return  this->bias;
 }
 
 template <typename Scalar>
-const VectorD& LinearLayer<Scalar>::get_bias() const{
+const VectorD<Scalar>& LinearLayer<Scalar>::get_bias() const{
     return  this->bias;
 }
 
 template <typename Scalar>
-const VectorD& LinearLayer<Scalar>::get_grad_bias() const{
+const VectorD<Scalar>& LinearLayer<Scalar>::get_grad_bias() const{
     return  this->grad_bias;
 }
 
