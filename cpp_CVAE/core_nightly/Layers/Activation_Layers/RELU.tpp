@@ -1,7 +1,7 @@
 //RELU.tpp
 #pragma once
-
 #include <algorithm> //std::max
+#include "custom_types.h"
 
 
 template <typename Scalar>

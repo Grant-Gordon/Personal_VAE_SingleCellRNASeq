@@ -7,14 +7,11 @@
 #include "custom_types.h"
 #include "param_init_utils.h"
 #include "config.h"
+#include "custom_types.h"
 
 
 template <typename Scalar>
 class LinearLayer : public Layer<Scalar>{
-    
-    using typename Layer<Scalar>::MatrixD;
-    using typename Layer<Scalar>::VectorD;
-
     public:
 
         //TODO: cam pass input, output dims, and init fn with config 
@@ -30,7 +27,7 @@ class LinearLayer : public Layer<Scalar>{
         
         //Custom Sparse
         VectorD forward(const SingleSparseRow<Scalar>& input);
-        VectorD backward(const VectorD& grad_output);
+        VectorD backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input);
         
         void update_weights(Scalar learning_rate) override;
 

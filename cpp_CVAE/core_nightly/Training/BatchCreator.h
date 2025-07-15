@@ -11,10 +11,7 @@
 
 template <typename Scalar>
 class BatchCreator{
-    using Batch = typename std::vector<std::unique_ptr<SingleSparseRow<Scalar>>>;
-
-    public:
-        
+    public:    
         BatchCreator(const ChunkExprCSR<Scalar>& chunk_csr);
         
         ~BatchCreator();
@@ -38,7 +35,7 @@ class BatchCreator{
         std::thread preload_thread; 
         bool all_batches_preloaded;
 
-        //TODO: must calculate final_batch_size :((((((((((((((
+        //TODO: not sure this is still needed
         int final_batch_size;
 
         void preload_batches();

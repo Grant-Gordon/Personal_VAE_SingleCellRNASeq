@@ -1,11 +1,8 @@
 //LinearLayer.tpp
+#pragma once
 #include <random>
 #include <omp.h>
-
-template<typename Scalar>
-using MatrixD = typename LinearLayer<Scalar>::MatrixD;
-template<typename Scalar>
-using VectorD = typename LinearLayer<Scalar>::VectorD;
+#include "custom_types.h"
 
 //Constructor 
 template <typename Scalar>

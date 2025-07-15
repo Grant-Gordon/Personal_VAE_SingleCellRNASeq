@@ -7,10 +7,6 @@
 
 template <typename Scalar>
 class Layer{
-    protected:
-        using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
-        using VectorD = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-
     public: 
 
         //Dense X Dense

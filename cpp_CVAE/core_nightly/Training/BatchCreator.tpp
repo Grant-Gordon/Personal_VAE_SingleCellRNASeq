@@ -1,9 +1,11 @@
 //BatchCreator.tpp
+#pragma once
+#include "custom_types.h"
+#include "config.h"
 
 
-using Batch = typename std::vector<std::unique_ptr<SingleSparseRow<Scalar>>>;
-
-BatchCreator::BatchCreator(
+template <typename Scalar>
+BatchCreator<Scalar>::BatchCreator(
     const ChunkExprCSR<Scalar>& chunk_csr,
 ):
     chunk_csr(chunk_csr),
@@ -19,7 +21,8 @@ BatchCreator::BatchCreator(
 }
 
 //TODO: create benchmark to determine if batches are consumed faster than created, if so add multiple preload threads rather than just one. 
-void BatchCreator::preload_batches(){
+template <typename Scalar>
+void BatchCreator<Scalar>::preload_batches(){
     for(int i= 0; i < this->num_batches_in_chunk; ++i){
         if(this->stop_flag){break;}
         //TODO: add assert to confirm that it is only ever the final batch that this occures in. i.e. no wierd shuffling going on
@@ -50,7 +53,8 @@ void BatchCreator::preload_batches(){
 }
 
 //NOTE: actual_batch_size != batch_size, the final batch in a chunk may be smaller than batch_size if chunk_samples % batch_size != 0
-Batch BatchCreator::generate_batch(int* batch_sample_ids, int actual_batch_size){
+template <typename Scalar>
+Batch BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){
     // construct SSR samples corresponding to the batch sample ids in the chunk csr, and push to a vector
     Batch batch;
     batch.reserve(actual_batch_size); //TODO: size is not valid 
@@ -78,7 +82,8 @@ Batch BatchCreator::generate_batch(int* batch_sample_ids, int actual_batch_size)
     return batch;
 }
 
-void BatchCreator::generate_shuffled_split_batch_ids(){
+template <typename Scalar>
+void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
     int num_samples = this->chunk_csr->shape[0];
 
     this->flat_chunk_sample_id.resize(num_samples);
@@ -95,8 +100,8 @@ void BatchCreator::generate_shuffled_split_batch_ids(){
     }
 }
 
-
-BatchCreator::Batch BatchCreator::get_next_batch(){
+template <typename Scalar>
+Batch BatchCreator<Scalar>::get_next_batch(){
     std::unique_lock<std::mutex> lock(this->queue_mutex); //RAII
     queue_cv.wait(lock, [this](){ //[&] means capture all local vars by reference (local vars visible to lambda)
         return !preloaded_batch_queue.empty() || all_batches_preloaded || this->stop_flag; //wait until not empty or finished 
@@ -114,8 +119,8 @@ BatchCreator::Batch BatchCreator::get_next_batch(){
     return batch;
 }
 
-
-BatchCreator::~BatchCreator(){
+template <typename Scalar>
+BatchCreator<Scalar>::~BatchCreator(){
     this->stop_flag = true;
     this->queue_cv.notify_all(); // wake up any sleeping threads for clean exiting
     if(this->preload_thread.joinable()){

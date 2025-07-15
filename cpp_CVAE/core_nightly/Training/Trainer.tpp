@@ -7,7 +7,7 @@
 #include "config.h"
 
 template <typename Scalar>
-Trainer(Module<Scalar>& model,
+Trainer<Scalar>::Trainer(Module<Scalar>& model,
         Optimizer<Scalar>& optimizer,
         const std::vector<std::string> count_files_list,
         const std::vector<std::string> metadata_files_list //NOTE: metadata is not currently being handled anywhere 
@@ -41,7 +41,7 @@ void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR& chunk_csr){
 }
 //Batch level training
 template <typename Scalar>
-void Trainer<Scalar>::train_on_batch(const BatchCreator<Scalar>::Batch& batch){
+void Trainer<Scalar>::train_on_batch(const Batch& batch){
 
     auto recontructed = model.forward_input(batch);
     Scalar loss = loss::SSRMSELoss<Scalar>::compute(reconstructed, batch);

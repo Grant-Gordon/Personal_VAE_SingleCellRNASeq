@@ -1,22 +1,18 @@
 // loss_functions.tpp
-
+#include "custom_types.h"
 namespace loss {
 
-    template <typename Scalar>
-    using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
-    template <typename Scalar>
-    using VectorD = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-
+   
     // MSE
     template <typename Scalar>
-    Scalar MSELoss<Scalar>::compute(const loss::MatrixD& reconstructed,
-                                    const loss::MatrixD& target) {
+    Scalar MSELoss<Scalar>::compute(const MatrixD& reconstructed,
+                                    const MatrixD& target) {
         return (input - target).squaredNorm() / static_cast<Scalar>(input.rows());
     }
 
     //SSR MSE
     template <typename Scalar>
-    Scalar SSRMSELoss<Scalar>::compute( const loss::MatrixD& reconstructed, const std::vector<SingleSparseRow>& targets) {
+    Scalar SSRMSELoss<Scalar>::compute( const MatrixD& reconstructed, const std::vector<SingleSparseRow>& targets) {
         const int feature_size = reconstructed.cols();
         Scalar total_error = 0;
         
@@ -41,8 +37,8 @@ namespace loss {
 
     // BCE
     template <typename Scalar>
-    Scalar BCELoss<Scalar>::compute(const loss::MatrixD& input,
-                                    const loss::MatrixD& target,
+    Scalar BCELoss<Scalar>::compute(const MatrixD& input,
+                                    const MatrixD& target,
                                     Scalar epsilon) {
         auto clipped = input.array().min(1 - epsilon).max(epsilon);
         return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum() / static_cast<Scalar>(input.rows());
@@ -50,8 +46,8 @@ namespace loss {
 
     // KL Divergence
     template <typename Scalar>
-    Scalar KLLoss<Scalar>::compute(const loss::VectorD& mu,
-                                    const loss::VectorD& logvar) {
+    Scalar KLLoss<Scalar>::compute(const VectorD& mu,
+                                    const VectorD& logvar) {
         return static_cast<Scalar>(-0.5) * (1 + logvar.array() - mu.array().square() - logvar.array().exp()).sum();
     }
 

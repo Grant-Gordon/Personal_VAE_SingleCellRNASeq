@@ -1,14 +1,14 @@
 //RELU.h
 #pragma once
-#include "Layer.h"
+
 #include <Eigen/Dense>
+#include "Layer.h"
+#include "custom_types.h"
 
 
 template <typename Scalar>
 class RELULayer: public Layer<Scalar>{
     public:
-        using MatrixD = typename Layer<Scalar>::MatrixD;
-
         RELULayer() = default;
         ~RELULayer() override = default;
 

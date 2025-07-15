@@ -1,4 +1,13 @@
 //custom_types.h
+#pragma once
+
+template <typename Scalar>
+using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+
+template <typename Scalar>
+using VectorD = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+
+
 template <typename Scalar>
 struct SingleSparseRow{
     const int* indices;
@@ -15,7 +24,7 @@ struct ChunkExprCSR{
     const Scalar* vals_data;
     const int* cols_ptr_data;
     const int* indptr_ptr_data;
-
+    
     std::array<int, 2> shape; 
     int nnz; 
     
@@ -26,14 +35,18 @@ struct ChunkExprCSR{
         std::array<int,2> shape,
         int nnz
     ):
-        vals_ptr_py(std::move(vals)),
-        cols_ptr_py(std::move(cols)),
-        indptr_ptr_py(std::move(indtpr)),
-        shape(std::move(shape)),
-        nnz(nnz)
-        {
-            vals_ptr_data = vals_ptr_py.data();
-            vols_ptr_data = cols_ptr_py.data();
-            indptr_ptr_data = indptr_ptr_py.data();
-        }
+    vals_ptr_py(std::move(vals)),
+    cols_ptr_py(std::move(cols)),
+    indptr_ptr_py(std::move(indtpr)),
+    shape(std::move(shape)),
+    nnz(nnz)
+    {
+        vals_ptr_data = vals_ptr_py.data();
+        vols_ptr_data = cols_ptr_py.data();
+        indptr_ptr_data = indptr_ptr_py.data();
+    }
 };
+
+
+template <typename Scalar>
+using Batch = typename std::vector<std::unique_ptr<SingleSparseRow<Scalar>>>;

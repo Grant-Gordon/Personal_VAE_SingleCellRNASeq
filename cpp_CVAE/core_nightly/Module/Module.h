@@ -11,9 +11,6 @@ template <typename Scalar>
 
 class Module{
     public:
-        using MatrixD = typename Layer<Scalar>::MatrixD;
-        using VectorD = typename Layer<Scalar>::VectorD;
-
         LinearLayer<Scalar> input_layer;
         
 
@@ -22,9 +19,9 @@ class Module{
 
         void add_layer(std::shared_ptr<Layer<Scalar>> layer);
 
-        MatrixD forward(const MatrixD& std::vector<SingelSparseRow<Scalar>>& batch);
+        MatrixD forward(const MatrixD&, Batch& batch);
 
-        MatrixD backward(const MatrixD upstream_grad, const std::vector<SingleSparseRow<Scalar>>& batch_input);
+        MatrixD backward(const MatrixD upstream_grad, const Batch& batch_input);
 
         void update_weights();
         

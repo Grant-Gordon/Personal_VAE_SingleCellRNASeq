@@ -4,21 +4,22 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include "config.h"
+#include "custom_types.h"
 
 namespace loss {
 
     // Mean Squared Error Loss
     template <typename Scalar>
     struct MSELoss {
-        static Scalar compute(  const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>& reconstructed,
-                                const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>& target);
+        static Scalar compute(  const MatrixD& reconstructed,
+                                const MatrixD& target);
     };
 
     //Single Sparse Row MSE Loss
     template <typename Scalar>
     struct SSRMSELoss{
-        static Scalar compute(  const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>& reconstructed,
-                                const SingleSparseRow& target);
+        static Scalar compute(  const MatrixD& reconstructed,
+                                const SingleSparseRow& target); //TODO: wat?
     };
 
     // // Binary Cross Entropy Loss
@@ -39,8 +40,8 @@ namespace loss {
     // KL Divergence Loss for VAEs
     template <typename Scalar>
     struct KLLoss {
-        static Scalar compute(  const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& mu,
-                                const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& logvar);
+        static Scalar compute(  const VectorD& mu,
+                                const vectorD& logvar);
     };
 
 } // namespace loss

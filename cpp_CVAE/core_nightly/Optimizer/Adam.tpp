@@ -7,6 +7,7 @@
 #include <cassert>
 #include "LinearLayer.h"
 #include "config.h"
+#include "custom_types.h"
 
 template <typename Scalar>
 Adam<Scalar>::Adam(
