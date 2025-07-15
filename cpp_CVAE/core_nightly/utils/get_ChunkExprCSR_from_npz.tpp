@@ -1,4 +1,5 @@
 //get_ChunkExprCSR_from_npz.tpp
+#pragma once
 
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
