@@ -12,13 +12,16 @@
 template <typename Scalar>
 Adam<Scalar>::Adam(
 ): 
-    timestep(0)
+    timestep(0),
+    beta1(beta1),
+    beta2(beta2),
+    epsilon(epsilon)
 {
     static_assert(std::is_floating_point<Scalar>::value, "Adam: Scalar must be floating-point.");
     assert(config::training_learning_rate > 0 && "Adam: learning rate must be > 0.");
-    assert(config::Optim_beta1 >= 0 && config::Optim_beta1 < 1 && "Adam: config::Optim_beta1 must be in [0, 1).");
-    assert(config::Optim_beta2 >= 0 && config::Optim_beta2 < 1 && "Adam: config::Optim_beta2 must be in [0, 1).");
-    assert(config::Optim_epsilon > 0 && "Adam: config::Optim_epsilon must be > 0.");
+    assert(this->beta1 >= 0 && this->beta1 < 1 && "Adam: config::Optim_beta1 must be in [0, 1).");
+    assert(this->beta2 >= 0 && this->beta2 < 1 && "Adam: config::Optim_beta2 must be in [0, 1).");
+    assert(this->epsilon > 0 && "Adam: config::Optim_epsilon must be > 0.");
 }
 
 template <typename Scalar>
@@ -42,15 +45,15 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         }
 
         // Update moments
-        w_state.m = config::Optim_beta1 * w_state.m + (1 - config::Optim_beta1) * grad_weights;
-        w_state.v = config::Optim_beta2 * w_state.v + (1 - config::Optim_beta2) * grad_weights.cwiseProduct(grad_weights);
+        w_state.m = this->beta1 * w_state.m + (1 - this->beta1) * grad_weights;
+        w_state.v = this->beta2 * w_state.v + (1 - this->beta2) * grad_weights.cwiseProduct(grad_weights);
 
         // Bias correction
-        MatrixD<Scalar> m_hat = w_state.m / (1 - std::pow(config::Optim_beta1, timestep));
-        MatrixD<Scalar> v_hat = w_state.v / (1 - std::pow(config::Optim_beta2, timestep));
+        MatrixD<Scalar> m_hat = w_state.m / (1 - std::pow(this->beta1, timestep));
+        MatrixD<Scalar> v_hat = w_state.v / (1 - std::pow(this->beta2, timestep));
 
         // Weight update
-        weights -= (config::training_learning_rate * m_hat.array() / (v_hat.array().sqrt() + config::Optim_epsilon)).matrix();
+        weights -= (config::training_learning_rate * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
 
         // === BIASES ===
         VectorD<Scalar>& bias = linear->get_bias();
@@ -62,12 +65,12 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
             b_state.v = VectorD<Scalar>::Zero(grad_bias.size());
         }
 
-        b_state.m = config::Optim_beta1 * b_state.m + (1 - config::Optim_beta1) * grad_bias;
-        b_state.v = config::Optim_beta2 * b_state.v + (1 - config::Optim_beta2) * grad_bias.cwiseProduct(grad_bias);
+        b_state.m = this->beta1 * b_state.m + (1 - this->beta1) * grad_bias;
+        b_state.v = this->beta2 * b_state.v + (1 - this->beta2) * grad_bias.cwiseProduct(grad_bias);
 
-        VectorD<Scalar> m_hat_b = b_state.m / (1 - std::pow(config::Optim_beta1, timestep));
-        VectorD<Scalar> v_hat_b = b_state.v / (1 - std::pow(config::Optim_beta2, timestep));
+        VectorD<Scalar> m_hat_b = b_state.m / (1 - std::pow(this->beta1, timestep));
+        VectorD<Scalar> v_hat_b = b_state.v / (1 - std::pow(this->eta2, timestep));
 
-        bias -= (config::training_learning_rate * m_hat_b.array() / (v_hat_b.array().sqrt() + config::Optim_epsilon)).matrix();
+        bias -= (config::training_learning_rate * m_hat_b.array() / (v_hat_b.array().sqrt() + this->epsilon)).matrix();
     }
 }

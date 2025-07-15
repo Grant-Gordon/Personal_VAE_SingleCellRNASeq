@@ -9,7 +9,7 @@ template <typename Scalar>
 LinearLayer<Scalar>::LinearLayer(
     unsigned int input_dim, 
     unsigned int output_dim, 
-    InitFn init_fn
+    InitFn<scalar> init_fn
 ){
 
   

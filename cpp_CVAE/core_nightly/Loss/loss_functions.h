@@ -11,15 +11,15 @@ namespace loss {
     // Mean Squared Error Loss
     template <typename Scalar>
     struct MSELoss {
-        static Scalar compute(  const MatrixD& reconstructed,
-                                const MatrixD& target);
+        static Scalar compute(  const MatrixD<Scalar>& reconstructed,
+                                const MatrixD<Scalar>& target);
     };
 
     //Single Sparse Row MSE Loss
     template <typename Scalar>
     struct SSRMSELoss{
-        static Scalar compute(  const MatrixD& reconstructed,
-                                const SingleSparseRow& target); //TODO: wat?
+        static Scalar compute(  const MatrixD<Scalar>& reconstructed,
+                                const SingleSparseRow<Scalar>& target); //TODO: wat?
     };
 
     // // Binary Cross Entropy Loss
@@ -40,8 +40,8 @@ namespace loss {
     // KL Divergence Loss for VAEs
     template <typename Scalar>
     struct KLLoss {
-        static Scalar compute(  const VectorD& mu,
-                                const vectorD& logvar);
+        static Scalar compute(  const VectorD<Scalar>& mu,
+                                const VectorD<Scalar>& logvar);
     };
 
 } // namespace loss

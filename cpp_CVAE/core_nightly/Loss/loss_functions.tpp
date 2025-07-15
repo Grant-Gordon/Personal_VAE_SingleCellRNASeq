@@ -5,19 +5,19 @@ namespace loss {
    
     // MSE
     template <typename Scalar>
-    Scalar MSELoss<Scalar>::compute(const MatrixD& reconstructed,
-                                    const MatrixD& target) {
-        return (input - target).squaredNorm() / static_cast<Scalar>(input.rows());
+    Scalar MSELoss<Scalar>::compute(const MatrixD<Scalar>& reconstructed,
+                                    const MatrixD<Scalar>& target) {
+        return (reconstructed - target).squaredNorm() / static_cast<Scalar>(reconstructed.rows());
     }
 
     //SSR MSE
     template <typename Scalar>
-    Scalar SSRMSELoss<Scalar>::compute( const MatrixD& reconstructed, const std::vector<SingleSparseRow>& targets) {
+    Scalar SSRMSELoss<Scalar>::compute( const MatrixD<Scalar>& reconstructed, const std::vector<SingleSparseRow<Scalar>>& targets) {
         const int feature_size = reconstructed.cols();
         Scalar total_error = 0;
         
         #pragma omp parallel for reduction(+:total_error)
-        for(int i = 0; i < config::training_batch_size; ++i){
+        for(int i = 0; i < config::Training__batch_size; ++i){
             const auto& target_row = targets[i];
             const auto& reconstructed_row = output.row(i);
 
@@ -30,15 +30,15 @@ namespace loss {
         
             }
         }
-        return total_error / config::training_batch_size;
+        return total_error / config::Training__Batch_size;
     }
 
 
 
     // BCE
     template <typename Scalar>
-    Scalar BCELoss<Scalar>::compute(const MatrixD& input,
-                                    const MatrixD& target,
+    Scalar BCELoss<Scalar>::compute(const MatrixD<Scalar>& input,
+                                    const MatrixD<Scalar>& target,
                                     Scalar epsilon) {
         auto clipped = input.array().min(1 - epsilon).max(epsilon);
         return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum() / static_cast<Scalar>(input.rows());
@@ -46,8 +46,8 @@ namespace loss {
 
     // KL Divergence
     template <typename Scalar>
-    Scalar KLLoss<Scalar>::compute(const VectorD& mu,
-                                    const VectorD& logvar) {
+    Scalar KLLoss<Scalar>::compute(const VectorD<Scalar>& mu,
+                                    const VectorD<Scalar>& logvar) {
         return static_cast<Scalar>(-0.5) * (1 + logvar.array() - mu.array().square() - logvar.array().exp()).sum();
     }
 

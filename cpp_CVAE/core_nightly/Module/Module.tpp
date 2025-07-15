@@ -5,7 +5,7 @@
 
 template <typename Scalar>
 Module<Scalar>::Module(
-    std::vector<shared_ptr<Layer<Scalar>>>&& layers_vector
+    std::vector<std::shared_ptr<Layer<Scalar>>>&& layers_vector
 ):
     layers_vector(std::move(layers_vector))
 {}
@@ -68,7 +68,7 @@ void Module<Scalar>::update_weights(){
     assert(!this->layers_vector.empty() && "Module::update_weights: no layers to update.");
 
     for (const auto& layer : this->layers_vector){
-        layer->update_weights(config::Training__learning_rate);
+        layer->update_weights(config::Training__lr); //TODO: confirm that ADAM shouldn't be touching this. 
     }
 }
 

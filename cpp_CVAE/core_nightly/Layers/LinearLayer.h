@@ -14,11 +14,11 @@ template <typename Scalar>
 class LinearLayer : public Layer<Scalar>{
     public:
 
-        //TODO: cam pass input, output dims, and init fn with config 
+        //TODO: can pass input, output dims, and init fn with config 
         LinearLayer(
             unsigned int input_dim, 
             unsigned int output_dim, 
-            InitFn init_fn
+            InitFn<Scalar> init_fn
             );
 
         //Standard Dense

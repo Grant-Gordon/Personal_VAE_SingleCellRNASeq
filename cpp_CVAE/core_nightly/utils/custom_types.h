@@ -39,7 +39,7 @@ struct ChunkExprCSR{
     ):
     vals_ptr_py(std::move(vals)),
     cols_ptr_py(std::move(cols)),
-    indptr_ptr_py(std::move(indtpr)),
+    indptr_ptr_py(std::move(indptr)),
     shape(std::move(shape)),
     nnz(nnz)
     {
@@ -52,3 +52,6 @@ struct ChunkExprCSR{
 
 template <typename Scalar>
 using Batch = typename std::vector<std::unique_ptr<SingleSparseRow<Scalar>>>;
+
+template <typename Scalar>
+using InitFn = std::function<Scalar(unsigned int, unsigned int, std::mt19937)>;

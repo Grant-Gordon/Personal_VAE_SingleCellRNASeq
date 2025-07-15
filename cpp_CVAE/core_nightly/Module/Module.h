@@ -19,15 +19,15 @@ class Module{
 
         void add_layer(std::shared_ptr<Layer<Scalar>> layer);
 
-        MatrixD<Scalar> forward(const MatrixD<Scalar>&, Batch& batch);
+        MatrixD<Scalar> forward(const, Batch<Scalar>& batch); //TDOO: these will break if I ever have a module/head that does not take in sparse. Need to overlaod
 
         MatrixD<Scalar> backward(const MatrixD<Scalar> upstream_grad, const Batch<Scalar>& batch_input);
 
         void update_weights();
         
         //Getter
-        Layer<Scalar>& get_layer(); 
-        const Layer<Scalar>& get_layer() const; 
+        std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers(); 
+        const std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers() const; 
 
 
 
