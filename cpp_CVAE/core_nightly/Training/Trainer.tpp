@@ -19,7 +19,7 @@ Trainer(Module<Scalar>& model,
 {}
 void Trainer<Scalar>::train(){
     for(int epoch = 0; epoch < config::Training__epochs; ++epoch){
-        
+        //TODO: shuffle chunks 
         for(std::string count_file : count_files_list){
             ChunkExprCSR<Scalar> chunk_csr = get_ChunkExprCSR_from_npz(count_file);
 

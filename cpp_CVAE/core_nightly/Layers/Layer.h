@@ -20,5 +20,7 @@ class Layer{
         virtual MatrixD backward(const MatrixD& grad_output) = 0; 
         
         virtual void update_weights(Scalar learning_rate) {};
+
+        virtual bool has_trainable_params() const {return false;}
         virtual ~Layer() = default;
 };

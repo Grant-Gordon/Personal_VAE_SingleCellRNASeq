@@ -35,6 +35,8 @@ class LinearLayer : public Layer<Scalar>{
         void update_weights(Scalar learning_rate) override;
 
         //Getters
+        bool has_trainable_params() const  override {return true;}
+
         const MatrixD& get_weights() const;
         MatrixD& get_weights(); 
         const MatrixD& get_grad_weights() const;
@@ -51,7 +53,6 @@ class LinearLayer : public Layer<Scalar>{
         VectorD bias;      
         
         MatrixD input_cache;
-        std::optional<SingleSparseRow<Scalar>> input_cache_sparse; //TODO: defintyl caching this wrong needs handling in the future(should cache full batch not just single sampples but threading is wack )
 
         MatrixD grad_weights;
         VectorD grad_bias;

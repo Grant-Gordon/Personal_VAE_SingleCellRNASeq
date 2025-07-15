@@ -1,5 +1,6 @@
 //LinearLayer.tpp
 #include <random>
+#include <omp.h>
 
 template<typename Scalar>
 using MatrixD = typename LinearLayer<Scalar>::MatrixD;
@@ -20,7 +21,7 @@ LinearLayer<Scalar>::LinearLayer(
         && "LinearLayer: input_dim and output_dim must be > 0.");
 
 
-    std::mt19937 gen(config::seed); //TODO: confirm this is RNG I want
+    std::mt19937 gen(config::Global__seed); //TODO: confirm this is RNG I want
 
     this->weights = MatrixD(output_dim, input_dim);
     this->bias = VectorD::Zero(output_dim); //TODO confirm biases should Always be init to zeros
@@ -93,10 +94,9 @@ MatrixD LinearLayer<Scalar>::backward(const MatrixD& upstream_grad){
 //Forward Sparse Row - Custom forward for handling the sparse inputs of the first Linear Layer
 template <typename Scalar>
 VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
-    this->input_cache_sparse = input; //TODO this implies that every linear layer only takes in one SSR, need to clarify the ownership of batch samples for SSR backprop
-    VectorD output = this->bias;
     
-   
+    VectorD output = this->bias;
+       
     for(int j = 0; j < input.nnz; ++j){
         int idx = input.indices[j];
         Scalar val = input.data[j];
@@ -106,7 +106,6 @@ VectorD LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
 }
 
 
-//TODO: There are issues with how this->input_cache_sparse are cached, look into how inputs are being passed to Module.  
 //Backward Sparse Row - Custom backward for handling the SingleSparseRow inputs of the first Linear Layer
 template <typename Scalar>
 VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const SingleSparseRow<Scalar>& input){
@@ -140,9 +139,10 @@ VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const Single
     // bias [out_d * 1]
     // upstream_grad = [out_d * 1]
 
-    #pragma omp critical{//TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
-        for (int j = 0; j < input.nnz; ++j) {
-        this->grad_bias += upstream_grad; //elementwie addition
+    #pragma omp critical
+    {
+    //TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
+        this->grad_bias += upstream_grad;
     }
     // gradient loss wrt weight 
     // each nnz x_j in input contributes to dL/dW 
@@ -150,22 +150,21 @@ VectorD LinearLayer<Scalar>::backward(const VectorD& upstream_grad, const Single
     //outer product: upstream_grad * val =[out_d * 1]
 
     
-    #pragma omp critical{   //TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
-        for (int j = 0; j < input.nnz; ++j) {
-            int col = input.indices[j]; //column idx of val
-            Scalar val = input.data[j]; 
-            
-            // dL/dWij += upstream_grad * val 
+    for (int j = 0; j < input.nnz; ++j) {
+        int col = input.indices[j]; //column idx of val
+        Scalar val = input.data[j]; 
+        
+        // dL/dWij += upstream_grad * val 
+        #pragma omp critical{
             this->grad_weights.col(col) += upstream_grad * val;
-            
         }
-    }   
+        
+    }
+      
     //gradient wrt inputs[in_d * 1] = 
     //  = dL/dx
     //  = upstream_grad * W 
     return this->weights.transpose() * upstream_grad;
-
-
 }
 
 

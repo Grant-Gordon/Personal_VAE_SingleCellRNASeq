@@ -27,10 +27,9 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
     ++this->timestep;
 
     for (auto& layer : layers_vector) {
-        auto* raw_layer = layer.get();
-        auto* linear = dynamic_cast<LinearLayer<Scalar>*>(raw_layer); //TODO: confirm this isn't turning all layers into Linear (what about RELU)
-        if (!linear) continue;  // skip non-trainable layers
-
+        if (!layer->has_trainable_params()) continue; //Only train on layers with trainable params (e.g. skips RELU)
+        auto* linear = dynamic_cast<LinearLayer<Scalar>*>(layer.get());
+        assert(linear && "Adam::step: expected trainable layer to be LinearLayer");
         // === WEIGHTS ===
         MatrixD& weights = linear->get_weights();
         const MatrixD& grad_weights = linear->get_grad_weights();
