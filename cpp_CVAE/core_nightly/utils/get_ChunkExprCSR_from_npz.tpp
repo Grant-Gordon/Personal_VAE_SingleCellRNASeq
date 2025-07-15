@@ -16,7 +16,7 @@ ChunkExprCSR<Scalar> get_ChunkExprCSR_from_npz(const std::string& counts_path){
     auto cols   = results_dict["indices"].cast<pybind11::array_t<int>>();
     auto indptr = results_dict["indptr"].cast<pybind11::array_t<int>>();
     int nnz     = results_dict["nnz"].cast<int>();
-    pybind::array shape_array = results_dict["shape"].cast<pybind11:array>();
+    pybind11::array shape_array = results_dict["shape"].cast<pybind11::array>();
     auto shape_buffer = shape_array.request(); //pybind11::buffer_info
     std::array<int,2> shape =  {
         static_cast<int>(shape_buffer.shape[0]),

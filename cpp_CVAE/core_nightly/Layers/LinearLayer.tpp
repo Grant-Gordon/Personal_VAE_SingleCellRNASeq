@@ -2,14 +2,14 @@
 #pragma once
 #include <random>
 #include <omp.h>
+#include "config.h"
 #include "custom_types.h"
-
 //Constructor 
 template <typename Scalar>
 LinearLayer<Scalar>::LinearLayer(
     unsigned int input_dim, 
     unsigned int output_dim, 
-    InitFn<scalar> init_fn
+    InitFn<Scalar> init_fn
 ){
 
   
@@ -152,7 +152,8 @@ VectorD<Scalar> LinearLayer<Scalar>::backward(const VectorD<Scalar>& upstream_gr
         Scalar val = input.data[j]; 
         
         // dL/dWij += upstream_grad * val 
-        #pragma omp critical{
+        #pragma omp critical
+        {
             this->grad_weights.col(col) += upstream_grad * val;
         }
         

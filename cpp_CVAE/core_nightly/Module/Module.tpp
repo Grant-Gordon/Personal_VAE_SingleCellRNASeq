@@ -1,7 +1,9 @@
 //Module.tpp
 #pragma once
 
+#include "config.h"
 #include "custom_types.h"
+
 
 template <typename Scalar>
 Module<Scalar>::Module(

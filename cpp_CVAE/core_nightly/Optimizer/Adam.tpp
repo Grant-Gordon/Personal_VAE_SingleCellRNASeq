@@ -5,12 +5,12 @@
 #pragma once
 #include <cmath>
 #include <cassert>
-#include "LinearLayer.h"
 #include "config.h"
 #include "custom_types.h"
+#include "LinearLayer.h"
 
 template <typename Scalar>
-Adam<Scalar>::Adam(
+Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
 ): 
     timestep(0),
     beta1(beta1),
@@ -18,7 +18,7 @@ Adam<Scalar>::Adam(
     epsilon(epsilon)
 {
     static_assert(std::is_floating_point<Scalar>::value, "Adam: Scalar must be floating-point.");
-    assert(config::training_learning_rate > 0 && "Adam: learning rate must be > 0.");
+    assert(config::Training__lr > 0 && "Adam: learning rate must be > 0.");
     assert(this->beta1 >= 0 && this->beta1 < 1 && "Adam: config::Optim_beta1 must be in [0, 1).");
     assert(this->beta2 >= 0 && this->beta2 < 1 && "Adam: config::Optim_beta2 must be in [0, 1).");
     assert(this->epsilon > 0 && "Adam: config::Optim_epsilon must be > 0.");
@@ -38,7 +38,7 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         MatrixD<Scalar>& weights = linear->get_weights();
         const MatrixD<Scalar>& grad_weights = linear->get_grad_weights();
 
-        ParamState& w_state = weight_state[raw_layer];
+        ParamState& w_state = weight_state[layer.get()];
         if (w_state.m.size() == 0) {
             w_state.m = MatrixD<Scalar>::Zero(grad_weights.rows(), grad_weights.cols());
             w_state.v = MatrixD<Scalar>::Zero(grad_weights.rows(), grad_weights.cols());
@@ -53,13 +53,13 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         MatrixD<Scalar> v_hat = w_state.v / (1 - std::pow(this->beta2, timestep));
 
         // Weight update
-        weights -= (config::training_learning_rate * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
+        weights -= (config::Training__lr * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
 
         // === BIASES ===
         VectorD<Scalar>& bias = linear->get_bias();
         const VectorD<Scalar>& grad_bias = linear->get_grad_bias();
 
-        ParamState& b_state = bias_state[raw_layer];
+        ParamState& b_state = bias_state[layer.get()];
         if (b_state.m.size() == 0) {
             b_state.m = VectorD<Scalar>::Zero(grad_bias.size());
             b_state.v = VectorD<Scalar>::Zero(grad_bias.size());
@@ -69,8 +69,8 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         b_state.v = this->beta2 * b_state.v + (1 - this->beta2) * grad_bias.cwiseProduct(grad_bias);
 
         VectorD<Scalar> m_hat_b = b_state.m / (1 - std::pow(this->beta1, timestep));
-        VectorD<Scalar> v_hat_b = b_state.v / (1 - std::pow(this->eta2, timestep));
+        VectorD<Scalar> v_hat_b = b_state.v / (1 - std::pow(this->beta2, timestep));
 
-        bias -= (config::training_learning_rate * m_hat_b.array() / (v_hat_b.array().sqrt() + this->epsilon)).matrix();
+        bias -= (config::Training__lr * m_hat_b.array() / (v_hat_b.array().sqrt() + this->epsilon)).matrix();
     }
 }

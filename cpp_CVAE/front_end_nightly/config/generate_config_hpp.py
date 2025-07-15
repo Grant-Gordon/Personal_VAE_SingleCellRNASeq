@@ -3,6 +3,7 @@
 import yaml
 import re
 from config.supported_types import SUPPORTED_OBJECTS
+from config.supported_types import SUPPORTED_INITIALIZERS
 
 
 def load_yaml(path: str) -> dict:
@@ -112,9 +113,21 @@ def generate_layers_vector(identifier: str, architecture: list) -> list:
     for layer in architecture:
         if not isinstance(layer, dict) or len(layer) != 1:
             raise ValueError(f"Invalid layer entry: {layer}")
+        
         layer_type, args = list(layer.items())[0]
-        args_str = ", ".join(map(str, args))
+        transformed_args = []
+
+        for arg in args:
+            if isinstance(arg, str) and arg in SUPPORTED_INITIALIZERS:
+                # Convert "glorot" → glorot_init<Scalar>
+                transformed_args.append(f"{SUPPORTED_INITIALIZERS[arg]}<Scalar>")
+            else:
+                # Leave as-is (int, float, or already-valid code)
+                transformed_args.append(str(arg))
+
+        args_str = ", ".join(transformed_args)
         lines.append(f"    std::make_shared<{layer_type}Layer<Scalar>>({args_str}),")
+    
     lines.append("};")
     return lines
 
@@ -166,6 +179,8 @@ def write_config_header(yaml_path: str, output_path: str = "config.h", external_
 
 
     full_lines = [
+        "#pragma message(\">>> config.h included from: \" __FILE__)",
+        "",
         "#pragma once",
         "#include <string_view>",
         "#include <memory>",

@@ -2,6 +2,7 @@
 #pragma once
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <random>
 
 template <typename Scalar>
 using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;

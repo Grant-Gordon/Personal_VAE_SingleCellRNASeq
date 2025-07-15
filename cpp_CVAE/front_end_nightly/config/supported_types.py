@@ -11,7 +11,9 @@ SUPPORTED_LAYERS = {
 }
 
 SUPPORTED_INITIALIZERS = {
-    "glorot", "he", "zeros"
+    "glorot": "glorot_init",
+    "he": "he_init",
+    "zeros": "zeros_intt"
 }
 
 SUPPORTED_ACTIVATIONS = {

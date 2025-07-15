@@ -2,7 +2,7 @@
 
 #include <random>
 #include <cmath>
-
+#include "config.h"
 //glorot - best for sigmoiud or tanh
 template<typename Scalar>
 inline Scalar glorot_init(unsigned int input_dim, unsigned int output_dim, std::mt19937 gen){

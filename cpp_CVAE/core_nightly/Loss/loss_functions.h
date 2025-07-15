@@ -19,7 +19,7 @@ namespace loss {
     template <typename Scalar>
     struct SSRMSELoss{
         static Scalar compute(  const MatrixD<Scalar>& reconstructed,
-                                const SingleSparseRow<Scalar>& target); //TODO: wat?
+                                const Batch<Scalar>& target); //TODO: wat?
     };
 
     // // Binary Cross Entropy Loss

@@ -1,4 +1,6 @@
 // loss_functions.tpp
+#pragma once
+#include "config.h"
 #include "custom_types.h"
 namespace loss {
 
@@ -12,37 +14,37 @@ namespace loss {
 
     //SSR MSE
     template <typename Scalar>
-    Scalar SSRMSELoss<Scalar>::compute( const MatrixD<Scalar>& reconstructed, const std::vector<SingleSparseRow<Scalar>>& targets) {
+    Scalar SSRMSELoss<Scalar>::compute( const MatrixD<Scalar>& reconstructed, const Batch<Scalar>& targets) {
         const int feature_size = reconstructed.cols();
         Scalar total_error = 0;
         
         #pragma omp parallel for reduction(+:total_error)
-        for(int i = 0; i < config::Training__batch_size; ++i){
+        for(int i = 0; i < config::Training__batch_size; ++i){ //TODO: use actual batch_size for final batch support 
             const auto& target_row = targets[i];
-            const auto& reconstructed_row = output.row(i);
+            const auto& reconstructed_row = reconstructed[i];
 
             //sum squared error over non-zero entires
             for (int k = 0; k < target_row.nnz; ++k){
                 int col = target_row.indices[k];
                 Scalar val = target_row.values[k];
-                Scalar difference = reconstruced_row[col] - val;
+                Scalar difference = reconstructed_row[col] - val;
                 total_error += difference * difference;
         
             }
         }
-        return total_error / config::Training__Batch_size;
+        return total_error / config::Training__batch_size;
     }
 
 
 
-    // BCE
-    template <typename Scalar>
-    Scalar BCELoss<Scalar>::compute(const MatrixD<Scalar>& input,
-                                    const MatrixD<Scalar>& target,
-                                    Scalar epsilon) {
-        auto clipped = input.array().min(1 - epsilon).max(epsilon);
-        return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum() / static_cast<Scalar>(input.rows());
-    }
+    // // BCE
+    // template <typename Scalar>
+    // Scalar BCELoss<Scalar>::compute(const MatrixD<Scalar>& input,
+    //                                 const MatrixD<Scalar>& target,
+    //                                 Scalar epsilon) {
+    //     auto clipped = input.array().min(1 - epsilon).max(epsilon);
+    //     return -((target.array() * clipped.log()) + ((1 - target.array()) * (1 - clipped).log())).sum() / static_cast<Scalar>(input.rows());
+    // }
 
     // KL Divergence
     template <typename Scalar>

@@ -3,9 +3,9 @@
 
 #include <vector>
 #include <memory>
-#include "Layer_all.h"
-#include "custom_types.h"
 #include "config.h"
+#include "custom_types.h"
+#include "Layer_all.h"
 
 template <typename Scalar>
 
@@ -19,7 +19,7 @@ class Module{
 
         void add_layer(std::shared_ptr<Layer<Scalar>> layer);
 
-        MatrixD<Scalar> forward(const, Batch<Scalar>& batch); //TDOO: these will break if I ever have a module/head that does not take in sparse. Need to overlaod
+        MatrixD<Scalar> forward(const Batch<Scalar>& batch); //TDOO: these will break if I ever have a module/head that does not take in sparse. Need to overlaod
 
         MatrixD<Scalar> backward(const MatrixD<Scalar> upstream_grad, const Batch<Scalar>& batch_input);
 
