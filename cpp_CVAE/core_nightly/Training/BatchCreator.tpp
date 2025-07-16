@@ -1,7 +1,7 @@
 //BatchCreator.tpp
 #pragma once
 #include "custom_types.h"
-#include "config.h"
+#include "config_values.h"
 
 
 template <typename Scalar>
@@ -12,8 +12,8 @@ BatchCreator<Scalar>::BatchCreator(
     total_batches_loaded(0),
     all_batches_preloaded(false)
 {
-    this->num_batches_in_chunk = (this->chunk_csr.shape[0] + config::Training__batch_size -1) / config::Training__batch_size; //B=3 s=11, (11+2)/3 = 4
-    this->final_batch_size = (this->chunk_csr.shape[0] % config::Training__batch_size ==0) ? config::Training__batch_size : this->chunk_csr.shape[0] % config::Training__batch_size; // handles final batch 
+    this->num_batches_in_chunk = (this->chunk_csr.shape[0] + configV::Training__batch_size -1) / configV::Training__batch_size; //B=3 s=11, (11+2)/3 = 4
+    this->final_batch_size = (this->chunk_csr.shape[0] % configV::Training__batch_size ==0) ? configV::Training__batch_size : this->chunk_csr.shape[0] % configV::Training__batch_size; // handles final batch 
     this->generate_shuffled_split_batch_ids();
 
     //NOTE prelaod_batches is only allcated 1 thread. 
@@ -27,14 +27,14 @@ void BatchCreator<Scalar>::preload_batches(){
         if(this->stop_flag){break;}
         //TODO: add assert to confirm that it is only ever the final batch that this occures in. i.e. no wierd shuffling going on
         //Handles final batch where batch might be smaller than  batch_size
-        int actual_batch_size = (i == this->num_batches_in_chunk -1) ? this->final_batch_size : config::Training__batch_size;
+        int actual_batch_size = (i == this->num_batches_in_chunk -1) ? this->final_batch_size : configV::Training__batch_size;
 
         
         { //RAII, mutex is relased once scope ends
             std::unique_lock<std::mutex> lock(queue_mutex);
             //wait until there is room in the queue
             this->queue_cv.wait(lock, [this]() {
-                return this->preloaded_batch_queue.size() < config::Data__batches_to_preload || this->stop_flag;
+                return this->preloaded_batch_queue.size() < configV::Data__batches_to_preload || this->stop_flag;
             });
             if (this->stop_flag){break;}
         }
@@ -54,9 +54,9 @@ void BatchCreator<Scalar>::preload_batches(){
 
 //NOTE: actual_batch_size != batch_size, the final batch in a chunk may be smaller than batch_size if chunk_samples % batch_size != 0
 template <typename Scalar>
-const Batch<Scalar>& BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){//TODO: actual input_batch size not really used anoymore is it?
+ Batch<Scalar> BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){//TODO: actual input_batch size not really used anoymore is it?
     // construct SSR samples corresponding to the batch sample ids in the chunk csr, and push to a vector
-    const Batch<Scalar>& batch;
+    Batch<Scalar> batch;
     batch.reserve(actual_batch_size); //TODO: size is not valid 
 
     //TODO: confirm this doesn't break with batches smaller than batchsize 
@@ -79,24 +79,24 @@ const Batch<Scalar>& BatchCreator<Scalar>::generate_batch(int* batch_sample_ids,
         batch.push_back(std::move(ssr));
     }
     
-    return batch;
+    return batch; //NOTE: Putting faith in gcc RVO- Return Value Optimization, turns out compilers naturalyl do move semantics when possible -\_O_/-
 }
 
 template <typename Scalar>
 void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
-    int num_samples = this->chunk_csr->shape[0];
+    int num_samples = this->chunk_csr.shape[0];
 
     this->flat_chunk_sample_ids.resize(num_samples);
 
     std::iota(this->flat_chunk_sample_ids.begin(), this->flat_chunk_sample_ids.end(), 0);
-    std::mt19937 rng(config::Global__seed);
+    std::mt19937 rng(configV::Global__seed);
     std::shuffle(this->flat_chunk_sample_ids.begin(), this->flat_chunk_sample_ids.end(), rng);
 
     this->shuffled_split_batch_ids.reserve(this->num_batches_in_chunk);
     
     //TODO: point of optimization - could thread this but need to be careful, might starve threads in forward pass. 
     for (int i = 0; i < this->num_batches_in_chunk; ++i){
-        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_ids[i * config::Training__batch_size]);
+        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_ids[i * configV::Training__batch_size]);
     }
 }
 

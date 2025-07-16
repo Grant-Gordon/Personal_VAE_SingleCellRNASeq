@@ -1,7 +1,7 @@
 //Module.tpp
 #pragma once
 
-#include "config.h"
+#include "config_values.h" //TODO: only used once and not positive it should be used at all. 
 #include "custom_types.h"
 
 
@@ -26,12 +26,12 @@ template <typename Scalar>
 MatrixD<Scalar> Module<Scalar>::forward(const Batch<Scalar>& batch){
     const int batch_size = static_cast<int>(batch.size());
 
-    MatrixD<Scalar> out(batch_size, this->layers_vector[0]->output_dim);
+    MatrixD<Scalar> out(batch_size, this->get_output_dim());
     
     //parallelize the input layer so that each sample(SSR) in the batch gets its own thread
     #pragma omp parallel for
     for (int i = 0; i < batch_size; ++i){
-        out.row(i) = this->layers_vector[0]->forward(batch[i]); //forward takes in SSR, returns VectorD i.e. dense row 
+        out.row(i) = this->layers_vector[0]->forward(*batch[i]); //forward takes in SSR, returns VectorD i.e. dense row 
     }
 
     //sequentially forward the rest of the layers
@@ -53,12 +53,12 @@ MatrixD<Scalar> Module<Scalar>::backward(const MatrixD<Scalar> upstream_grad, co
     }
     //backprop sparse input layer per sample
     const int batch_size = static_cast<int>(batch_input.size());
-    MatrixD<Scalar> grad_out(batch_size, this->layers_vector[0]->input_dim);
+    MatrixD<Scalar> grad_out(batch_size, this->get_input_dim());
 
 
     #pragma omp parallel for //NOTE: this is technically parallelized but, because backward(SingleSparseRow) contains critical section, in practice it is sequential 
     for(int i =0; i < batch_size; ++i){
-        VectorD<Scalar> back = this->layers_vector[0]->backward(grad.row(i).transpose(), batch_input[i]);
+        VectorD<Scalar> back = this->layers_vector[0]->backward(grad.row(i).transpose(), *batch_input[i]);
 
         grad_out.row(i) =  back.transpose();
     }
@@ -70,7 +70,7 @@ void Module<Scalar>::update_weights(){
     assert(!this->layers_vector.empty() && "Module::update_weights: no layers to update.");
 
     for (const auto& layer : this->layers_vector){
-        layer->update_weights(config::Training__lr); //TODO: confirm that ADAM shouldn't be touching this. 
+        layer->update_weights(configV::Training__lr); //TODO: confirm that ADAM shouldn't be touching this. 
     }
 }
 
@@ -83,4 +83,23 @@ std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_layers() {
 template <typename Scalar>
 const std::vector<std::shared_ptr<Layer<Scalar>>>& Module<Scalar>::get_layers() const {
     return this->layers_vector;
+}
+
+
+template <typename Scalar>
+const int Module<Scalar>::get_input_dim() const {
+    auto linear_ptr = dynamic_cast<LinearLayer<Scalar>*>(this->layers_vector[0].get());
+    if (!linear_ptr) {
+        throw std::runtime_error("First layer must be LinearLayer to get input_dim.");
+    }
+    return linear_ptr->input_dim;
+}
+
+template <typename Scalar>
+const int Module<Scalar>::get_output_dim() const {
+    auto linear_ptr = dynamic_cast<LinearLayer<Scalar>*>(this->layers_vector.back().get());
+    if (!linear_ptr) {
+        throw std::runtime_error("Last layer must be LinearLayer to get output_dim.");
+    }
+    return linear_ptr->output_dim;
 }

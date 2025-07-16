@@ -2,7 +2,7 @@
 #pragma once
 #include <random>
 #include <omp.h>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 //Constructor 
 template <typename Scalar>
@@ -18,7 +18,7 @@ LinearLayer<Scalar>::LinearLayer(
         && "LinearLayer: input_dim and output_dim must be > 0.");
 
 
-    std::mt19937 gen(config::Global__seed); //TODO: confirm this is RNG I want
+    std::mt19937 gen(configV::Global__seed); //TODO: confirm this is RNG I want
 
     this->weights = MatrixD<Scalar>(output_dim, input_dim);
     this->bias = VectorD<Scalar>::Zero(output_dim); //TODO confirm biases should Always be init to zeros

@@ -3,7 +3,7 @@
 
 #include <Eigen/Dense>
 #include <cmath>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 
 namespace loss {
@@ -11,15 +11,15 @@ namespace loss {
     // Mean Squared Error Loss
     template <typename Scalar>
     struct MSELoss {
-        static Scalar compute(  const MatrixD<Scalar>& reconstructed,
-                                const MatrixD<Scalar>& target);
+        static Scalar compute(const MatrixD<Scalar>& reconstructed, const MatrixD<Scalar>& target);
+        static MatrixD<Scalar> gradients(const MatrixD<Scalar>& reconstructed, const MatrixD<Scalar>& target);
     };
 
     //Single Sparse Row MSE Loss
     template <typename Scalar>
     struct SSRMSELoss{
-        static Scalar compute(  const MatrixD<Scalar>& reconstructed,
-                                const Batch<Scalar>& target); //TODO: wat?
+        static Scalar compute(const MatrixD<Scalar>& reconstructed, const Batch<Scalar>& target);
+        static MatrixD<Scalar> gradients(const MatrixD<Scalar>& reconstructed, const Batch<Scalar>& target);
     };
 
     // // Binary Cross Entropy Loss
@@ -40,8 +40,7 @@ namespace loss {
     // KL Divergence Loss for VAEs
     template <typename Scalar>
     struct KLLoss {
-        static Scalar compute(  const VectorD<Scalar>& mu,
-                                const VectorD<Scalar>& logvar);
+        static Scalar compute(const VectorD<Scalar>& mu, const VectorD<Scalar>& logvar); //TODO: get the graidnets for KL
     };
 
 } // namespace loss

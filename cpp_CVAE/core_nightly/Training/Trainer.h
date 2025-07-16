@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <Eigen/Sparse>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 #include "loss_functions.h"
 #include "Module.h"
@@ -15,7 +15,7 @@ template <typename Scalar>
 class Trainer{
     public:
         Trainer(Module<Scalar>& model,
-            Optimizer<Scalar>& optimizer,
+            std::unique_ptr<Optimizer<Scalar>>& optimizer,
             const std::vector<std::string>& count_files_list,
             const std::vector<std::string>& metadata_files_list
             // int num_features TODO: See if I can do some const expr stuff with this. 
@@ -27,7 +27,7 @@ class Trainer{
         
         private:
             Module<Scalar>& model;
-            Optimizer<Scalar>& optimizer;
+            std::unique_ptr<Optimizer<Scalar>>& optimizer;
             const std::vector<std::string>& count_files_list;
             const std::vector<std::string>& metadata_files_list;
             

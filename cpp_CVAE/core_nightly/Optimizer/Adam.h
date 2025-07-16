@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 
 template <typename Scalar>

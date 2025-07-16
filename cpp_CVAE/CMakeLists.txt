@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(CVAE_CPP)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CONFIG_BUILD_DIR "" CACHE PATH "Path to generated config.h")
+set(CONFIG_BUILD_DIR "" CACHE PATH "Path to generated config_[objects/values}_.h")
 
 # Pybind / Python
 set(PYBIND11_DIR ${CMAKE_SOURCE_DIR}/external/pybind11)

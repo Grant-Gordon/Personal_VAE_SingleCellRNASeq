@@ -1,11 +1,10 @@
 //LinearLayer.h
 
 #pragma once
-#include "config.h"
+#include "config_values.h"
 #include <functional>
 #include <optional>
 #include "Layer.h" //Incldues Eigen 
-#include "custom_types.h"
 #include "param_init_utils.h"
 #include "custom_types.h"
 

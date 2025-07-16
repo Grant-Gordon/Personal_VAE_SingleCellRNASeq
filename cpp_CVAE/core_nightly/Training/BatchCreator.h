@@ -6,7 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 
 template <typename Scalar>
@@ -14,6 +14,7 @@ class BatchCreator{
     public:    
        bool all_batches_preloaded;
         BatchCreator(const ChunkExprCSR<Scalar>& chunk_csr);
+        const Batch<Scalar>& get_next_batch();
         
         ~BatchCreator();
     
@@ -38,8 +39,7 @@ class BatchCreator{
 
         void preload_batches();
         void generate_shuffled_split_batch_ids();
-        const Batch<Scalar>& generate_batch(int* batch_sample_ids, int actual_batch_size); //Thread target, pushes to preloaded_batch queue, 
-        const Batch<Scalar>& get_next_batch();
+        Batch<Scalar> generate_batch(int* batch_sample_ids, int actual_batch_size); //Thread target, pushes to preloaded_batch queue, 
 };
 
 #include "BatchCreator.tpp"

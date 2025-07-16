@@ -5,7 +5,7 @@
 #pragma once
 #include <cmath>
 #include <cassert>
-#include "config.h"
+#include "config_values.h"
 #include "custom_types.h"
 #include "LinearLayer.h"
 
@@ -18,10 +18,10 @@ Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
     epsilon(epsilon)
 {
     static_assert(std::is_floating_point<Scalar>::value, "Adam: Scalar must be floating-point.");
-    assert(config::Training__lr > 0 && "Adam: learning rate must be > 0.");
-    assert(this->beta1 >= 0 && this->beta1 < 1 && "Adam: config::Optim_beta1 must be in [0, 1).");
-    assert(this->beta2 >= 0 && this->beta2 < 1 && "Adam: config::Optim_beta2 must be in [0, 1).");
-    assert(this->epsilon > 0 && "Adam: config::Optim_epsilon must be > 0.");
+    assert(configV::Training__lr > 0 && "Adam: learning rate must be > 0.");
+    assert(this->beta1 >= 0 && this->beta1 < 1 && "Adam: configV::Optim_beta1 must be in [0, 1).");
+    assert(this->beta2 >= 0 && this->beta2 < 1 && "Adam: configV::Optim_beta2 must be in [0, 1).");
+    assert(this->epsilon > 0 && "Adam: configV::Optim_epsilon must be > 0.");
 }
 
 template <typename Scalar>
@@ -53,7 +53,7 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         MatrixD<Scalar> v_hat = w_state.v / (1 - std::pow(this->beta2, timestep));
 
         // Weight update
-        weights -= (config::Training__lr * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
+        weights -= (configV::Training__lr * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
 
         // === BIASES ===
         VectorD<Scalar>& bias = linear->get_bias();
@@ -71,6 +71,6 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         VectorD<Scalar> m_hat_b = b_state.m / (1 - std::pow(this->beta1, timestep));
         VectorD<Scalar> v_hat_b = b_state.v / (1 - std::pow(this->beta2, timestep));
 
-        bias -= (config::Training__lr * m_hat_b.array() / (v_hat_b.array().sqrt() + this->epsilon)).matrix();
+        bias -= (configV::Training__lr * m_hat_b.array() / (v_hat_b.array().sqrt() + this->epsilon)).matrix();
     }
 }
