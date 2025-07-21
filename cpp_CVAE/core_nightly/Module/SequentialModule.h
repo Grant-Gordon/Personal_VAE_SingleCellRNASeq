@@ -20,6 +20,6 @@ class SequentialModule : public Module<Scalar>{
 
         const std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers_vector() const;
     private:
-        const std::vector<shared_ptr<Layer<Scalar>>> layers_vector;
+        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
         
 };
