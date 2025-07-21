@@ -67,13 +67,13 @@ MatrixD<Scalar> LinearLayer<Scalar>::backward(const MatrixD<Scalar>& upstream_gr
     //  = upstream_grad^T * input
     this->grad_weights = upstream_grad.transpose() * this->input_cache;
 
-    //grad_bias [out_d *1]
-    //  = dL/db 
-    //  = dL/dy * dy/db
-    //      dL/dy = upstream_grad
-    //      dy/db = I | specifically if y_i = W_i * x + b_i, then dy/db_i = 1, for all i!=j, dy/db_i =0 i.e. I
-    //  = upstream_grad * Identity
-    //  = sum across rows
+        //grad_bias [out_d *1]
+        //  = dL/db 
+        //  = dL/dy * dy/db
+        //      dL/dy = upstream_grad
+        //      dy/db = I | specifically if y_i = W_i * x + b_i, then dy/db_i = 1, for all i!=j, dy/db_i =0 i.e. I
+        //  = upstream_grad * Identity
+        //  = sum across rows
     this->grad_bias = upstream_grad.colwise().sum().transpose();
     
     //grad_input [B * in_d]
@@ -90,79 +90,66 @@ MatrixD<Scalar> LinearLayer<Scalar>::backward(const MatrixD<Scalar>& upstream_gr
 
 //Forward Sparse Row - Custom forward for handling the sparse inputs of the first Linear Layer
 template <typename Scalar>
-VectorD<Scalar> LinearLayer<Scalar>::forward(const SingleSparseRow<Scalar>& input){
+MatrixD<Scalar> LinearLayer<Scalar>::forward(const Batch<Scalar>& input){
     
-    VectorD output = this->bias;
-       
-    for(int j = 0; j < input.nnz; ++j){
-        int idx = input.indices[j];
-        Scalar val = input.data[j];
-        output += val * this->weights.row(idx).transpose();
+    const unsigned int batch_size = static_cast<int>(input.size());
+    MatrixD out(batch_size, this->output_dim); //Pre-allocate MatrixD to populate with SSR forward outputs
+  
+    #pragma omp parallel for 
+    for (size_t i = 0; i < batch_size; ++i){
+        VectorD ssr_output = this->bias;
+        for(int j = 0; j < input.nnz; ++j){
+            int idx = input.indices[j];
+            Scalar val = input.data[j];
+            ssr_output += val * this->weights.row(idx).transpose();
+        }
+        out.row(i) = ssr_output;
     }
-    return output;
+    return out;
 }
 
 
 //Backward Sparse Row - Custom backward for handling the SingleSparseRow inputs of the first Linear Layer
 template <typename Scalar>
-VectorD<Scalar> LinearLayer<Scalar>::backward(const VectorD<Scalar>& upstream_grad, const SingleSparseRow<Scalar>& input){
-    //upstream_grad [out_d * 1] = dL/dy_i for this particular SSR
-    //weights [out_d * in_d]
-    // bias [out_d * 1]
-    //input.indices: [nnz]
-    //input.data [nnz]
-    //grad_weights [out_d * in_d]
-    //grad_bias [out_d *1]
-    //grad_input [in_d *1]
+VectorD<Scalar> LinearLayer<Scalar>::backward(const MatrixD<Scalar>& upstream_grad, const Batch<Scalar>& input){
+
+    const unsigned int batch_size = static_cast<int>(input.size());
+    MatrixD<Scalar> grad_out(batch_size, this->input_dim);
     
-    //find
-    //   dL/dw - grad of loss wrt wieghts for this single sample
-    //  dlL/db - grad of loss wrt bias for this sample
-    // dL/x_i - grad of loss wrt input (ssr)
-
-    // forward: y_i = sum_j (w_j * x_j) + b
-    
-
-
-
     //gradient of loss wrt bias
     // = dL/db 
     // = dL/dy * dy/db 
-    //     dL/dy = upstream_grad
+    //     dL/dy = upstream_grad    
     //     dy/db = I 
     // = upstream_grad * I
+    this->grad_bias = upstream_grad.colwise().sum().transpose(); //Colwise sum because bias VectorD, input MatrixD
 
-    // each sample adds its own contribution to bias 
-    // bias [out_d * 1]
-    // upstream_grad = [out_d * 1]
 
-    #pragma omp critical
-    {
-    //TODO:point of optimization, instead of critical, just give therad-local grad_weights and grad_bias
-        this->grad_bias += upstream_grad;
-    }
-    // gradient loss wrt weight 
-    // each nnz x_j in input contributes to dL/dW 
-    // val [1:Scalar]
-    //outer product: upstream_grad * val =[out_d * 1]
+    //grad_weights [out_d * in_d]
+    //  = dL/dW 
+    //  = dL/dy *dy/dW
+    //      dL/dy = upstream_grad
+    //      dy/dW = x | specifically if y_i = [sum over j (w_ij * x_i + b_i)]  then dy_i/dW_ij = x_j
+    //  = upstream_grad^T * input
+    #pragma parallel for
+    for(size_t i = 0; i < batch_size; ++i){
 
-    
-    for (int j = 0; j < input.nnz; ++j) {
-        int col = input.indices[j]; //column idx of val
-        Scalar val = input.data[j]; 
-        
-        // dL/dWij += upstream_grad * val 
-        #pragma omp critical
-        {
+        for (size_t j =0; j< input[j].nzz; ++j){
+            int col = input[i].indices[j];
+            Scalar val = input[i].data[j];
+
             this->grad_weights.col(col) += upstream_grad * val;
+
+            //gradient wrt inputs[in_d * 1] = 
+            //  = dL/dx
+            //  = upstream_grad * W 
+            grad_out.row(i) = this->grad_weights.col(col).transpose * upstream_grad;
+
+
+
         }
-        
     }
-      
-    //gradient wrt inputs[in_d * 1] = 
-    //  = dL/dx
-    //  = upstream_grad * W 
-    return this->weights.transpose() * upstream_grad;
+    return grad_out;
 }
 
 

@@ -20,13 +20,17 @@ class LinearLayer : public Layer<Scalar>{
             InitFn<Scalar> init_fn
             );
 
+            unsigned int input_dim;
+            unsigned int output_dim;
+
+
         //Standard Dense
         MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
         MatrixD<Scalar> backward(const MatrixD<Scalar>& grad_output) override;
         
         //Custom Sparse
-        VectorD<Scalar> forward(const SingleSparseRow<Scalar>& input);
-        VectorD<Scalar> backward(const VectorD<Scalar>& upstream_grad, const SingleSparseRow<Scalar>& input);
+        MatrixD<Scalar> forward(const Batch<Scalar>& input);
+        MatrixD<Scalar> backward(const VectorD<Scalar>& upstream_grad, const Batch<Scalar>& input_batch); //TODO: why in gods name is Module handling the threaded batching and not this designated SSR forward. for gods sake just make this input i.e. custon_types.h::Batch std::vector<SSR> 
         
         void update_weights(Scalar learning_rate) override;
 

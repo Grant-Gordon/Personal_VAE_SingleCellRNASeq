@@ -19,7 +19,7 @@ inline Scalar glorot_init(unsigned int input_dim, unsigned int output_dim, std::
 
 //HE - best for RELU leakyRELU or ELU
 template<typename Scalar>
-inline Scalar he_init(unsigned int input_dim, unsigned int /*output_dim*/, std::mt19937 gen){
+inline Scalar he_init(unsigned int input_dim, unsigned int /*output_dim*/, std::mt19937 gen){ //TODO: why am I even including output_dim, its not like theires some parent is there some parent InitFn that demands 3 args???
     static_assert(std::is_floating_point<Scalar>::value, "he_init: Scalar must be floating-point.");
     assert(input_dim > 0 && "he_init: input_dim must be > 0.");
 
