@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 #include "custom_types.h"
-#include "Layer.h"
+#include "TrainableLayer.h"
 #include "param_init_utils.h"
 
 template <typename Scalar>
@@ -17,9 +17,14 @@ class DenseLinear : public TrainableLayer<Scalar>{
         MatrixD<Scalar> backward(const MatrixD<Scalar>& upstream_grad) override;
 
         bool supports_sparse_input() const override{return false;} //TODO: override dont even include?
-        void zero_grad() override;
+        
+        const MatrixD<Scalar>& get_input_cache() const override;
+        MatrixD<Scalar>& get_input_cache() override;
         
         ~DenseLinear() = default;
+    private:
+        MatrixD<Scalar> input_cache;
+
 };
 
 #include "DenseLinear.tpp"

@@ -12,19 +12,19 @@ SparseLinear<Scalar>::SparseLinear(
     unsigned int input_dim,
     unsigned int output_dim,
     InitFn<Scalar> init_fn 
-):
-    input_dim(input_dim),
-    output_dim(output_dim)
+)
 {
+    this->input_dim = input_dim;
+    this->output_dim = output_dim;
     std::mt19937 gen(configV::Global__seed);
     
     this->weights = MatrixD<Scalar>(output_dim, input_dim);
-    this->weights_grad = MatrixD<Scalar>(output_dim, input_dim);
-    this-> bias = VectorD<Scalar>::Zero(output_dim);
-    this-> bias_grad = VectorD<Scalar>::Zero(output_dim);
+    this->grad_weights = MatrixD<Scalar>(output_dim, input_dim);
+    this->bias = VectorD<Scalar>::Zero(output_dim);
+    this->grad_bias = VectorD<Scalar>::Zero(output_dim);
     
     ASSERT(this->input_dim > 0 && this->output_dim > 0);
-    ASSERT(this->weights.rows() == this->output_dim && this->weights.cols() == this->inpu_dim);
+    ASSERT(this->weights.rows() == this->output_dim && this->weights.cols() == this->input_dim);
     ASSERT(this->bias.size() == output_dim);
 
 
@@ -44,7 +44,7 @@ template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
     ASSERT(!input.empty());
     ASSERT(this->weights.rows() == this->bias.size());
-    this-> input_cache = input;
+    this->input_cache = input;
     
     const unsigned int batch_size = static_cast<int>(input.size());
     MatrixD<Scalar> out(batch_size, this->output_dim); //Pre-allocate MatrixD to populate with SSR forward ouput
@@ -129,9 +129,12 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
     return downstream_grad;
 }
 
+template <typename Scalar>
+Batch<Scalar>& SparseLinear<Scalar>::get_input_cache(){
+    return this->input_cache;
+}
 
 template <typename Scalar>
-void SparseLinear<Scalar>::zero_grad(){
-    this->get_weights().setZero(); //TODO: confirm this will change the reference not just make some random copy of zero matrix
-    this->get_grad_bias().setZero();
+const Batch<Scalar>& SparseLinear<Scalar>::get_input_cache()const{
+    return this->input_cache;
 }

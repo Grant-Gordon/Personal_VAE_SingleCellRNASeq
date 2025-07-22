@@ -1,8 +1,18 @@
 //TrainableLayer.h
+#pragma once
+
+#include "custom_types.h"
+#include "Layer.h"
+
 template <typename Scalar>
 class TrainableLayer : public Layer<Scalar> {
     public:
         bool has_trainable_params() const  override{return true;}
+        
+        void zero_grad() override{
+            this->grad_weights.setZero();
+            this->grad_bias.setZero();
+        }
 
         const MatrixD<Scalar>& get_weights() const{ return this->weights;}
         MatrixD<Scalar>& get_weights(){ return this->weights;}
@@ -30,8 +40,6 @@ class TrainableLayer : public Layer<Scalar> {
 
         VectorD<Scalar> bias;
         VectorD<Scalar> grad_bias;
-
-        MatrixD<Scalar> input_cache;
 
         unsigned int input_dim;
         unsigned int output_dim;

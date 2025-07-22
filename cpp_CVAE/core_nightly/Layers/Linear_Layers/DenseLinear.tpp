@@ -13,10 +13,10 @@ DenseLinear<Scalar>::DenseLinear(
     unsigned int input_dim,
     unsigned int output_dim,
     InitFn<Scalar> init_fn
-):
-input_dim(input_dim),
-output_dim(output_dim)
+)
 {
+    this->input_dim = input_dim;
+    this->output_dim = output_dim;
     std::mt19937 gen(configV::Global__seed);
     this->weights = MatrixD<Scalar>(output_dim, input_dim);
     ASSERT(input_dim > 0 && output_dim > 0);
@@ -76,8 +76,13 @@ MatrixD<Scalar> DenseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_gr
     DASSERT((upstream_grad * this->weights).cols() == this->input_cache.cols());
     return upstream_grad * this->weights;
 }
+
 template <typename Scalar>
-void DenseLinear<Scalar>::zero_grad(){
-    this->grad_weights.setZero();
-    this->grad_bias.setZero();
+const MatrixD<Scalar>& DenseLinear<Scalar>::get_input_cache()const{
+    return this->input_cache;
+}
+
+template <typename Scalar>
+MatrixD<Scalar>& DenseLinear<Scalar>::get_input_cache(){
+    return this->input_cache;
 }
