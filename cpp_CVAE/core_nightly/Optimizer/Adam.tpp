@@ -26,11 +26,12 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
     for (auto& layer : layers_vector) {
         if (!layer->has_trainable_params()) continue; //Only train on layers with trainable params (e.g. skips RELU)
 
+        auto trainable = std::dynamic_pointer_cast<TrainableLayer<Scalar>>(layer);
         // === WEIGHTS ===
-        MatrixD<Scalar>& weights = layer->get_weights();
-        const MatrixD<Scalar>& grad_weights = layer->get_grad_weights();
+        MatrixD<Scalar>& weights = trainable->get_weights();
+        const MatrixD<Scalar>& grad_weights = trainable->get_grad_weights();
 
-        ParamState& w_state = weight_state[layer.get()];
+        ParamState& w_state = weight_state[trainable.get()];
         if (w_state.m.size() == 0) {
             w_state.m = MatrixD<Scalar>::Zero(grad_weights.rows(), grad_weights.cols());
             w_state.v = MatrixD<Scalar>::Zero(grad_weights.rows(), grad_weights.cols());
@@ -48,10 +49,10 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         weights -= (configV::Training__lr * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
 
         // === BIASES ===
-        VectorD<Scalar>& bias = layer->get_bias();
-        const VectorD<Scalar>& grad_bias = layer->get_grad_bias();
+        VectorD<Scalar>& bias = trainable->get_bias();
+        const VectorD<Scalar>& grad_bias = trainable->get_grad_bias();
 
-        ParamState& b_state = bias_state[layer.get()];
+        ParamState& b_state = bias_state[trainable.get()];
         if (b_state.m.size() == 0) {
             b_state.m = VectorD<Scalar>::Zero(grad_bias.size());
             b_state.v = VectorD<Scalar>::Zero(grad_bias.size());
