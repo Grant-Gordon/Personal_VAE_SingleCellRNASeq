@@ -18,8 +18,8 @@ class DenseLinear : public TrainableLayer<Scalar>{
 
         bool supports_sparse_input() const override{return false;} //TODO: override dont even include?
         
-        const MatrixD<Scalar>& get_input_cache() const override;
-        MatrixD<Scalar>& get_input_cache() override;
+        const MatrixD<Scalar>& get_input_cache() const;
+        MatrixD<Scalar>& get_input_cache();
         
         ~DenseLinear() = default;
     private:

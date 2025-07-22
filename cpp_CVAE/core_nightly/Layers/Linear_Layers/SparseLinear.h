@@ -15,8 +15,8 @@ class SparseLinear : public TrainableLayer<Scalar>{
 
         bool supports_sparse_input() const override  {return  true;}
 
-        const Batch<Scalar>& get_input_cache()const override;
-        Batch<Scalar>& get_input_cache() override;
+        const Batch<Scalar>& get_input_cache()const;
+        Batch<Scalar>& get_input_cache();
 
         ~SparseLinear() override = default;
     private:

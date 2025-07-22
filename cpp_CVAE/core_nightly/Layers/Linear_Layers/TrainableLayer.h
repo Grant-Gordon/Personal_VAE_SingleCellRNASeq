@@ -25,9 +25,6 @@ class TrainableLayer : public Layer<Scalar> {
 
         const VectorD<Scalar>& get_grad_bias() const{ return this->grad_bias;}
         VectorD<Scalar>& get_grad_bias(){ return this->grad_bias;}
-        
-        const MatrixD<Scalar>& get_input_cache() const{ return this->input_cache;}
-        MatrixD<Scalar>& get_input_cache(){ return this->input_cache;}
     
         const unsigned int get_input_dim() const {return this->input_dim;}
         const unsigned int get_output_dim() const {return this->output_dim;}
