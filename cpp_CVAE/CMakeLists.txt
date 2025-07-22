@@ -13,13 +13,22 @@ add_executable(main_cpp
     core_nightly/exec/main.cpp
 )
 
+#Unit Test executable 
+file(GLOB TEST_SOURCES
+    core_nightly/exec/Tests/test_*.cpp 
+    core_nightly/exec/Tests/run_all_tests.cpp 
+)
+add_executable(run_tests ${TEST_SOURCES})
+
 # Target include directories
-target_include_directories(main_cpp
+foreach(target main_cpp run_tests)
+    target_include_directories(${target}
     BEFORE PRIVATE
         ${CONFIG_BUILD_DIR}
         ${PYBIND11_DIR}/include
         ${Python3_INCLUDE_DIRS}
         ${PROJECT_SOURCE_DIR}/core_nightly/Layers
+        ${PROJECT_SOURCE_DIR}/core_nightly/Layers/Linear_Layers
         ${PROJECT_SOURCE_DIR}/core_nightly/Layers/Activation_Layers
         ${PROJECT_SOURCE_DIR}/core_nightly/Loss
         ${PROJECT_SOURCE_DIR}/core_nightly/Module
@@ -29,5 +38,8 @@ target_include_directories(main_cpp
         ${PROJECT_SOURCE_DIR}/core_nightly/utils
         ${PROJECT_SOURCE_DIR}/external/eigen
 )
+endforeach()
+
+
 
 message(STATUS "Using CONFIG_BUILD_DIR = ${CONFIG_BUILD_DIR}")

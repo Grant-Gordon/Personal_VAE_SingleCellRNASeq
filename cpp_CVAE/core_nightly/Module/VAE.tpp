@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <Eigen/Dense>
+#include <vector>
 #include "custom_types.h"
 #include "Module.h"
 #include "DenseLinear.h"
@@ -19,7 +20,14 @@ VAE::VAE(
     decoder(decoder),
     mu_layer(mu_layer),
     logvar_layer(logvar_layer)
-{}
+{   
+    //Add all layers to layer vector;
+    this->layers_vector.reserve(this->encoder->get_layers_vector().size() + this->decoder->get_layers_vector().size() + 2);
+    this->layers_vector.insert(this->layers_vector.end(), this->encoder->get_layers_vector().begin(), this->encoder->get_layers_vector().end());
+    this->layers_vector.push_back(this->mu_layer);
+    this->layers_vector.push_back(this->logvar_layer);
+    this->layers_vector.insert(this->layers_vector.end(), this->decoder->get_layers_vector().begin(), this->decoder->get_layers_vector().end());
+}
 
 //Dense input
 template <typename Scalar>
@@ -73,3 +81,4 @@ MatrixD<Scalar> VAE::backward(const MatrixD<Scalar>& upstream_grad){
     //4)backprop through encoder
     return this->encoder.backward(mu_layer_downstream_grad + logvar_layer_downstream_grad); //Add them because of some multivariate calculus chain rule stuff. Idk, 
 }
+

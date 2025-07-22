@@ -57,8 +57,3 @@ void SequentialModule<Scalar>::zero_grad(){
         }
     }
 }
-
-template<typename Scalar>
-const std::vector<shared_ptr<Layer<Scalar>>> SequentialModule<Scalar>::get_layers_vector()const{
-    return this->layers_vector;
-}

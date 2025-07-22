@@ -18,8 +18,6 @@ class SequentialModule : public Module<Scalar>{
         bool supports_sparse_input() const override;
         void zero_grad()override;
 
-        const std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers_vector() const;
     private:
-        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
-        
+        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;    
 };

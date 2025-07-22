@@ -20,6 +20,8 @@ class VAE : public Module{
         MatrixD<Sclar> backward(const MatrixD<Scalar>& upstream_grad) override;
 
         
+
+
     private:
         MatrixD<Scalar> remarameterize(MatrixD<Scalar> mu, MatrixD<Scalar> logvar);
         const DenseLinear<Scalar>& mu_layer;
@@ -31,6 +33,7 @@ class VAE : public Module{
         MatrixD<Scalar>& mu_cache;
         MatrixD<Scalar>& logvar_cache;
 
+        const std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector;
 };
 
 #include "VAE.tpp"

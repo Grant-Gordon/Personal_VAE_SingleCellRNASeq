@@ -1,6 +1,8 @@
 //Module_mkII.h
 #pragma once
 #include <stdexcept>
+#include <vector>
+#include <memory>
 #include "custom_types.h"
 
 template <typename Scalar>
@@ -14,6 +16,10 @@ class Module{
         }
         virtual bool supports_sparse_input() const {return false;}
         virtual void zero_grad() = 0;
+        
+        const std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers_vector()const {return this->layers_vector;};
 
         virtual ~Module() = default;
+    protected:
+        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
 };

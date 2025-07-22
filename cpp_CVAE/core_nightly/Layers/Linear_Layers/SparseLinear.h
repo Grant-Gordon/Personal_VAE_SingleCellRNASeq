@@ -9,7 +9,7 @@ template <typename Scalar>
 class SparseLinear : public Layer<Scalar>{
     public:
 
-        SparseLinear(unsigned int input_dim, unsigned int output_dim, InitFn init_fn);
+        SparseLinear(unsigned int input_dim, unsigned int output_dim, InitFn<Scalar> init_fn);
 
         MatrixD<Scalar> forward(const Batch<Scalar>& input) override;
         MatrixD<Scalar> backward(const MatrixD<Scalar>& upstream_grad) override;

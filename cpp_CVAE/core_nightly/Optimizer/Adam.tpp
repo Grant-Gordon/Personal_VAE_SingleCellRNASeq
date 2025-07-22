@@ -5,6 +5,7 @@
 #pragma once
 #include <cmath>
 #include <cassert>
+#include <omp.h>
 #include "config_values.h"
 #include "custom_types.h"
 #include "LinearLayer.h"
@@ -16,27 +17,18 @@ Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
     beta1(beta1),
     beta2(beta2),
     epsilon(epsilon)
-{
-    static_assert(std::is_floating_point<Scalar>::value, "Adam: Scalar must be floating-point.");
-    assert(configV::Training__lr > 0 && "Adam: learning rate must be > 0.");
-    assert(this->beta1 >= 0 && this->beta1 < 1 && "Adam: configV::Optim_beta1 must be in [0, 1).");
-    assert(this->beta2 >= 0 && this->beta2 < 1 && "Adam: configV::Optim_beta2 must be in [0, 1).");
-    assert(this->epsilon > 0 && "Adam: configV::Optim_epsilon must be > 0.");
-}
+{}
 
 template <typename Scalar>
 void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector) {
-    assert(!layers_vector.empty() && "Adam::step: layers_vector is empty.");
-
     ++this->timestep;
-
+    #pragma omp parallel for
     for (auto& layer : layers_vector) {
         if (!layer->has_trainable_params()) continue; //Only train on layers with trainable params (e.g. skips RELU)
-        auto* linear = dynamic_cast<LinearLayer<Scalar>*>(layer.get());
-        assert(linear && "Adam::step: expected trainable layer to be LinearLayer");
+
         // === WEIGHTS ===
-        MatrixD<Scalar>& weights = linear->get_weights();
-        const MatrixD<Scalar>& grad_weights = linear->get_grad_weights();
+        MatrixD<Scalar>& weights = layer->get_weights();
+        const MatrixD<Scalar>& grad_weights = layer->get_grad_weights();
 
         ParamState& w_state = weight_state[layer.get()];
         if (w_state.m.size() == 0) {
@@ -56,8 +48,8 @@ void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vect
         weights -= (configV::Training__lr * m_hat.array() / (v_hat.array().sqrt() + this->epsilon)).matrix();
 
         // === BIASES ===
-        VectorD<Scalar>& bias = linear->get_bias();
-        const VectorD<Scalar>& grad_bias = linear->get_grad_bias();
+        VectorD<Scalar>& bias = layer->get_bias();
+        const VectorD<Scalar>& grad_bias = layer->get_grad_bias();
 
         ParamState& b_state = bias_state[layer.get()];
         if (b_state.m.size() == 0) {

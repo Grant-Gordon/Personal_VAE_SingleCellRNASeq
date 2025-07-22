@@ -12,14 +12,14 @@ class DenseLinear : public Layer<Scalar>{
 
 
     public:
-        DenseLinear(int input_dim, int output_dim, InitFn init_fn);
+        DenseLinear(unsigned int input_dim, unsigned int output_dim, InitFn<Scalar> init_fn);
 
 
         MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
         MatrixD<Scalar> backward(const MatrixD<Scalar>& upstream_grad) override;
 
-        bool supports_sparse_input() const {return false;} //TODO: override dont even include?
-        bool has_trainable_params() override const {return true;}
+        bool supports_sparse_input() const override{return false;} //TODO: override dont even include?
+        bool has_trainable_params() const  override{return true;}
         void zero_grad() override;
 
         const MatrixD<Scalar>& get_weights() const;
