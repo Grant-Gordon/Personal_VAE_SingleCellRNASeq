@@ -26,13 +26,16 @@ class DenseLinear : public Layer<Scalar>{
         MatrixD<Scalar>& get_weights(); 
 
         const MatrixD<Scalar>& get_grad_weights() const;
+        MatrixD<Scalar>& get_grad_weights();
         
         const VectorD<Scalar>& get_bias() const;
         VectorD<Scalar>& get_bias();
 
         const VectorD<Scalar>& get_grad_bias() const;
+         VectorD<Scalar>& get_grad_bias();
         
         const MatrixD<Scalar>& get_input_cache() const;
+        MatrixD<Scalar>& get_input_cache();
         
         ~DenseLinear() = default;
     private:

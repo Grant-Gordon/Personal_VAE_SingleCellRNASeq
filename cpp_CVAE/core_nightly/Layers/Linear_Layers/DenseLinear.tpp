@@ -98,6 +98,10 @@ template <typename Scalar>
 const MatrixD<Scalar>& DenseLinear<Scalar>::get_grad_weights() const{
     return  this->grad_weights;
 }
+template <typename Scalar>
+MatrixD<Scalar>& DenseLinear<Scalar>::get_grad_weights(){
+    return  this->grad_weights;
+}
 
 //Getters - biases
 
@@ -115,8 +119,16 @@ template <typename Scalar>
 const VectorD<Scalar>& DenseLinear<Scalar>::get_grad_bias() const{
     return  this->grad_bias;
 }
+template <typename Scalar>
+VectorD<Scalar>& DenseLinear<Scalar>::get_grad_bias() {
+    return  this->grad_bias;
+}
 
 template <typename Scalar>
 const MatrixD<Scalar>& DenseLinear<Scalar>::get_input_cache() const{
+    return this->input_cache;
+}
+template <typename Scalar>
+MatrixD<Scalar>& DenseLinear<Scalar>::get_input_cache(){
     return this->input_cache;
 }

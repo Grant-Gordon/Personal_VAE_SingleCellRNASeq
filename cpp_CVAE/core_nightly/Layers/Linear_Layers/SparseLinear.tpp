@@ -73,8 +73,8 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
     const int batch_size = static_cast<int>(this->input_cache.size());
     MatrixD<Scalar> downstream_grad(batch_size, this->input_dim);
    
-    this->grad_weights.setZero();
-    this->grad_bias.setZero();
+    this->get_grad_weights().setZero();
+    this->get_grad_bias().setZero();
     ASSERT(this->get_grad_weights().rows() == this->get_weights().rows());
     ASSERT(this->get_grad_weights().cols() == this->get_weights().cols());
     ASSERT(this->get_grad_bias().size() == this->get_bias().size());
@@ -153,6 +153,11 @@ const MatrixD<Scalar>& SparseLinear<Scalar>::get_grad_weights() const{
     return  this->grad_weights;
 }
 
+template <typename Scalar>
+ MatrixD<Scalar>& SparseLinear<Scalar>::get_grad_weights(){
+    return  this->grad_weights;
+}
+
 //Getters - biases
 
 template <typename Scalar>
@@ -171,7 +176,16 @@ const VectorD<Scalar>& SparseLinear<Scalar>::get_grad_bias() const{
 }
 
 template <typename Scalar>
+ VectorD<Scalar>& SparseLinear<Scalar>::get_grad_bias(){
+    return  this->grad_bias;
+}
+
+template <typename Scalar>
 const Batch<Scalar>& SparseLinear<Scalar>::get_input_cache() const{
     return this->input_cache;
 }
 
+template <typename Scalar>
+Batch<Scalar>& SparseLinear<Scalar>::get_input_cache() {
+    return this->input_cache;
+}

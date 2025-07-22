@@ -24,13 +24,16 @@ class SparseLinear : public Layer<Scalar>{
         MatrixD<Scalar>& get_weights(); 
 
         const MatrixD<Scalar>& get_grad_weights() const;
+        MatrixD<Scalar>& get_grad_weights();
         
         const VectorD<Scalar>& get_bias() const;
         VectorD<Scalar>& get_bias();
 
         const VectorD<Scalar>& get_grad_bias() const;
+        VectorD<Scalar>& get_grad_bias();
         
         const Batch<Scalar>& get_input_cache() const;
+        Batch<Scalar>& get_input_cache();
        
         ~SparseLinear() override = default;
 
