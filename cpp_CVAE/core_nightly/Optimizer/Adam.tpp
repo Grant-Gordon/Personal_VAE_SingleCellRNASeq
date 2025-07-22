@@ -8,7 +8,7 @@
 #include <omp.h>
 #include "config_values.h"
 #include "custom_types.h"
-#include "LinearLayer.h"
+#include "Layer_all.h"
 
 template <typename Scalar>
 Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
