@@ -1,6 +1,4 @@
 //test_RELU.cpp
-#pragma once
-
 #include <iostream>
 #include "RELU.h"
 

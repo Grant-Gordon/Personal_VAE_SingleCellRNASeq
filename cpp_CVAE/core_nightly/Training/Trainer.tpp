@@ -11,12 +11,12 @@ Trainer<Scalar>::Trainer(Module<Scalar>& model,
         std::unique_ptr<Optimizer<Scalar>>& optimizer,
         const std::vector<std::string>& count_files_list,
         const std::vector<std::string>& metadata_files_list //NOTE: metadata is not currently being handled anywhere 
-):
-    this->model(model),    
-    this->optimizer(optimizer),
-    this->count_files_list(count_files_list),
-    this->metadata_files_list(metadata_files_list)
-{}
+){
+    this->model = model;   
+    this->optimizer = optimizer;
+    this->count_files_list = count_files_list;
+    this->metadata_files_list = metadata_files_list;
+}
 
 template <typename Scalar>
 void Trainer<Scalar>::train(){

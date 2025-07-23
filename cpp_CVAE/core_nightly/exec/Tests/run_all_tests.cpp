@@ -1,5 +1,4 @@
 //run_all_tests.cpp
-#pragma once
 #include <iostream>
 
 void test_DenseLinear();

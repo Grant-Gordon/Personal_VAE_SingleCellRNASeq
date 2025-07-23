@@ -7,9 +7,9 @@
 template<typename Scalar>
 SequentialModule<Scalar>::SequentialModule(
     std::vector<std::shared_ptr<Layer<Scalar>>>&& layers_vector
-):
-    this->layers_vector(std::move(layers_vector))
-{}
+){
+    this->layers_vector = std::move(layers_vector);
+}
 
 //Dense input
 template<typename Scalar>

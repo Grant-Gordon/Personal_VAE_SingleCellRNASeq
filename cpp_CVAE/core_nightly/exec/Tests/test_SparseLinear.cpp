@@ -1,5 +1,4 @@
 // test_SparseLinear.cpp
-#pragma once
 #include <iostream>
 
 int test_SparseLinear(){

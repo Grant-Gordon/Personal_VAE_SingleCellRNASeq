@@ -12,12 +12,13 @@
 
 template <typename Scalar>
 Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
-): 
-    this->timestep(0),
-    this->beta1(beta1),
-    this->(beta2),
-    this->epsilon(epsilon)
-{}
+){
+    this->timestep = 0;
+    this->beta1 = beta1;
+    this->beta2 = beta2;
+    this->epsilon = epsilon;
+
+}
 
 template <typename Scalar>
 void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector) {
