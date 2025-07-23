@@ -42,6 +42,7 @@ void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr){
     }
 }
 //Batch level training
+//TODO: realizing I unfortunatly kinda hardcoded this for SSRMSE
 template <typename Scalar>
 void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
 
@@ -51,7 +52,7 @@ void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
 
     //TODO: add logging
 
-    model.backward(batch); //TODO: loss is scalar but backwards takes vectorD grad output?
+    model.backward(loss_gradient);
     optimizer->step(model.get_layers_vector());
 }
 

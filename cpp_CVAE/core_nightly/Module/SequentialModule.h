@@ -2,7 +2,7 @@
 #pragma once
 #include <vector>
 #include "custom_types.h"
-#include "Module_mkII.h"//TODO:rename to actual Module 
+#include "Module.h"//TODO:rename to actual Module 
 #include "Layer.h"
 
 template <typename Scalar>

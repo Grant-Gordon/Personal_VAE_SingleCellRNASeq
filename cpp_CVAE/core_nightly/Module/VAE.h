@@ -6,7 +6,7 @@
 #include "DenseLinear.h"
 
 template <typename Scalar>
-class VAE : public Module{
+class VAE : public Module<Scalar>{
     public:
         VAE(SequentialModule<Scalar>& encoder,
             SequentialModule<Scalar>& decoder,
@@ -17,13 +17,13 @@ class VAE : public Module{
         MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
         MatrixD<Scalar> forward(const Batch<Scalar>& input) override;
         
-        MatrixD<Sclar> backward(const MatrixD<Scalar>& upstream_grad) override;
+        MatrixD<Scalar> backward(const MatrixD<Scalar>& upstream_grad) override;
 
         
 
 
     private:
-        MatrixD<Scalar> remarameterize(MatrixD<Scalar> mu, MatrixD<Scalar> logvar);
+        MatrixD<Scalar> reparameterize(const MatrixD<Scalar>& mu, const MatrixD<Scalar>& logvar);
         const DenseLinear<Scalar>& mu_layer;
         const DenseLinear<Scalar>& logvar_layer;
 
