@@ -51,7 +51,7 @@ void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
 
     //TODO: add logging
 
-    model.backward(loss_gradient, batch); //TODO: loss is scalar but backwards takes vectorD grad output?
+    model.backward(batch); //TODO: loss is scalar but backwards takes vectorD grad output?
     optimizer->step(model.get_layers_vector());
 }
 

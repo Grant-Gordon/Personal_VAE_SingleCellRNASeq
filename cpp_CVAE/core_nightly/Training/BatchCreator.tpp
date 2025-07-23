@@ -94,7 +94,6 @@ void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
 
     this->shuffled_split_batch_ids.reserve(this->num_batches_in_chunk);
     
-    //TODO: point of optimization - could thread this but need to be careful, might starve threads in forward pass. 
     for (int i = 0; i < this->num_batches_in_chunk; ++i){
         this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_ids[i * configV::Training__batch_size]);
     }
