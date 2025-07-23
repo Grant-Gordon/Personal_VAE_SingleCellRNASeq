@@ -16,10 +16,10 @@ VAE<Scalar>::VAE(
     DenseLinear<Scalar>& mu_layer,
     DenseLinear<Scalar>& logvar_layer
 ):
-    encoder(encoder),
-    decoder(decoder),
-    mu_layer(mu_layer),
-    logvar_layer(logvar_layer)
+    this->encoder(encoder),
+    this->decoder(decoder),
+    this->mu_layer(mu_layer),
+    this->logvar_layer(logvar_layer)
 {   
     //Add all layers to layer vector;
     this->layers_vector.reserve(this->encoder->get_layers_vector().size() + this->decoder->get_layers_vector().size() + 2);

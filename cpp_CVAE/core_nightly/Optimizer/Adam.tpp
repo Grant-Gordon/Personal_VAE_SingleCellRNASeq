@@ -13,10 +13,10 @@
 template <typename Scalar>
 Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
 ): 
-    timestep(0),
-    beta1(beta1),
-    beta2(beta2),
-    epsilon(epsilon)
+    this->timestep(0),
+    this->beta1(beta1),
+    this->(beta2),
+    this->epsilon(epsilon)
 {}
 
 template <typename Scalar>

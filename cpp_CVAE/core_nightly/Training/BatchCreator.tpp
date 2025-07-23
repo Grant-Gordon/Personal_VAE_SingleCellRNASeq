@@ -8,9 +8,9 @@ template <typename Scalar>
 BatchCreator<Scalar>::BatchCreator(
     const ChunkExprCSR<Scalar>& chunk_csr
 ):
-    chunk_csr(chunk_csr),
-    total_batches_loaded(0),
-    all_batches_preloaded(false)
+    this->chunk_csr(chunk_csr),
+    this->total_batches_loaded(0),
+    this->all_batches_preloaded(false)
 {
     this->num_batches_in_chunk = (this->chunk_csr.shape[0] + configV::Training__batch_size -1) / configV::Training__batch_size; //B=3 s=11, (11+2)/3 = 4
     this->final_batch_size = (this->chunk_csr.shape[0] % configV::Training__batch_size ==0) ? configV::Training__batch_size : this->chunk_csr.shape[0] % configV::Training__batch_size; // handles final batch 

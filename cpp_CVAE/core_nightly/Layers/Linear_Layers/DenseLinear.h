@@ -24,7 +24,6 @@ class DenseLinear : public TrainableLayer<Scalar>{
         ~DenseLinear() = default;
     private:
         MatrixD<Scalar> input_cache;
-
 };
 
 #include "DenseLinear.tpp"
