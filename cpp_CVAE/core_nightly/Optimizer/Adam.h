@@ -16,7 +16,7 @@ class Adam : public Optimizer<Scalar>{
 
         Adam(int beta1, int beta2, int epsilon);
 
-        void step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers);
+        void step(const std::vector<std::shared_ptr<Layer<Scalar>>>& layers);
 
     private:
         int timestep;

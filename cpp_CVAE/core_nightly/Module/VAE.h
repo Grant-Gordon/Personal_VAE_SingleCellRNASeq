@@ -8,10 +8,11 @@
 template <typename Scalar>
 class VAE : public Module<Scalar>{
     public:
-        VAE(SequentialModule<Scalar>& encoder,
-            SequentialModule<Scalar>& decoder,
-            DenseLinear<Scalar>& mu_layer,
-            DenseLinear<Scalar>& logvar_layer
+        VAE(
+            std::shared_ptr<SequentialModule<Scalar>> encoder,
+            std::shared_ptr<SequentialModule<Scalar>> decoder,
+            std::shared_ptr<DenseLinear<Scalar>> mu_layer,
+            std::shared_ptr<DenseLinear<Scalar>> logvar_layer
         );
 
         MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
@@ -24,16 +25,16 @@ class VAE : public Module<Scalar>{
 
     private:
         MatrixD<Scalar> reparameterize(const MatrixD<Scalar>& mu, const MatrixD<Scalar>& logvar);
-        const DenseLinear<Scalar>& mu_layer;
-        const DenseLinear<Scalar>& logvar_layer;
+        std::shared_ptr<DenseLinear<Scalar>> mu_layer;
+        std::shared_ptr<DenseLinear<Scalar>> logvar_layer;
 
-        const SequentialModule<Scalar>& encoder;
-        const SequentialModule<Scalar>& decoder;
-        MatrixD<Scalar>& epsilon_cache;
-        MatrixD<Scalar>& mu_cache;
-        MatrixD<Scalar>& logvar_cache;
+        std::shared_ptr<SequentialModule<Scalar>> encoder;
+        std::shared_ptr<SequentialModule<Scalar>> decoder;
+        MatrixD<Scalar> epsilon_cache;
+        MatrixD<Scalar> mu_cache;
+        MatrixD<Scalar> logvar_cache;
 
-        const std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector;
+        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
 };
 
 #include "VAE.tpp"

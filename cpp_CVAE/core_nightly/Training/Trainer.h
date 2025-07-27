@@ -4,6 +4,8 @@
 
 #include <vector>
 #include <Eigen/Sparse>
+#include <memory>
+
 #include "config_values.h"
 #include "custom_types.h"
 #include "loss_functions.h"
@@ -14,10 +16,11 @@
 template <typename Scalar>
 class Trainer{
     public:
-        Trainer(Module<Scalar>& model,
-            std::unique_ptr<Optimizer<Scalar>>& optimizer,
-            const std::vector<std::string>& count_files_list,
-            const std::vector<std::string>& metadata_files_list
+        Trainer(
+            std::unique_ptr<Module<Scalar>> model,
+            std::unique_ptr<Optimizer<Scalar>> optimizer,
+            std::vector<std::string> count_files_list,
+            std::vector<std::string> metadata_files_list
             // int num_features TODO: See if I can do some const expr stuff with this. 
         );
         
@@ -26,10 +29,11 @@ class Trainer{
         ~Trainer() = default;
         
         private:
-            Module<Scalar>& model;
-            std::unique_ptr<Optimizer<Scalar>>& optimizer;
-            const std::vector<std::string>& count_files_list;
-            const std::vector<std::string>& metadata_files_list;
+            std::unique_ptr<Module<Scalar>> model;
+            std::unique_ptr<Optimizer<Scalar>> optimizer;
+
+            std::vector<std::string> count_files_list;
+            std::vector<std::string> metadata_files_list;
             
 
             void train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr);

@@ -9,10 +9,14 @@ set(PYBIND11_DIR ${CMAKE_SOURCE_DIR}/external/pybind11)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 add_subdirectory(${PYBIND11_DIR})  # Make pybind11::* targets visible
 
+# === OpenMP ===
+find_package(OpenMP REQUIRED)
+
 # === Main Executable ===
 add_executable(main_cpp
     core_nightly/exec/main.cpp
 )
+
 
 # === Unit Test Executable ===
 file(GLOB TEST_SOURCES
@@ -24,6 +28,9 @@ add_executable(run_tests ${TEST_SOURCES})
 # === Link Dependencies ===
 target_link_libraries(run_tests PRIVATE Python3::Python pybind11::headers)
 target_link_libraries(main_cpp PRIVATE Python3::Python pybind11::headers)
+target_link_libraries(main_cpp PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(run_tests PRIVATE OpenMP::OpenMP_CXX)  # If needed
+
 
 # === Include Directories ===
 foreach(target main_cpp run_tests)

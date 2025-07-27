@@ -34,7 +34,7 @@ DenseLinear<Scalar>::DenseLinear(
 
 
 template <typename Scalar>
-MatrixD<Scalar> DenseLinear<Scalar>::forward(const MatrixD<Scalar>& input){
+MatrixD<Scalar> DenseLinear<Scalar>::forward(const MatrixD<Scalar>& input){ //TODO could enforece passing by R-val to avoid copying at assignment of input_cache, but supposedly Eigens move semnatics are not neccissarily faster????
     this->input_cache = input;
     ASSERT(input.cols() == this->weights.cols());
     DASSERT(this->bias.size() == this->weights.rows());

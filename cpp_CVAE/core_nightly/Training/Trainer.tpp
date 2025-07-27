@@ -7,15 +7,18 @@
 #include "get_ChunkExprCSR_from_npz.tpp"
 
 template <typename Scalar>
-Trainer<Scalar>::Trainer(Module<Scalar>& model,
-        std::unique_ptr<Optimizer<Scalar>>& optimizer,
-        const std::vector<std::string>& count_files_list,
-        const std::vector<std::string>& metadata_files_list //NOTE: metadata is not currently being handled anywhere 
-){
-    this->model = model;   
-    this->optimizer = optimizer;
-    this->count_files_list = count_files_list;
-    this->metadata_files_list = metadata_files_list;
+Trainer<Scalar>::Trainer(
+    std::unique_ptr<Module<Scalar>> model,
+    std::unique_ptr<Optimizer<Scalar>> optimizer,
+    std::vector<std::string> count_files_list,
+    std::vector<std::string> metadata_files_list
+    //NOTE: metadata is not currently being handled anywhere 
+):
+count_files_list(std::move(count_files_list)),
+metadata_files_list(std::move(metadata_files_list))
+{
+    this->model = std::move(model);   
+    this->optimizer = std::move(optimizer);
 }
 
 template <typename Scalar>
@@ -46,14 +49,14 @@ void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr){
 template <typename Scalar>
 void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
 
-    auto reconstructed = model.forward(batch);
+    auto reconstructed = model->forward(batch);
     Scalar loss = loss::SSRMSELoss<Scalar>::compute(reconstructed, batch);
     MatrixD<Scalar> loss_gradient = loss::SSRMSELoss<Scalar>::gradients(reconstructed, batch);
 
     //TODO: add logging
 
-    model.backward(loss_gradient);
-    optimizer->step(model.get_layers_vector());
+    model->backward(loss_gradient);
+    optimizer->step(model->get_layers_vector());
 }
 
 

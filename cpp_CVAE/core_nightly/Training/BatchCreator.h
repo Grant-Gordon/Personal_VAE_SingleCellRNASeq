@@ -14,11 +14,10 @@ class BatchCreator{
     public:    
        bool all_batches_preloaded;
         BatchCreator(const ChunkExprCSR<Scalar>& chunk_csr);
-        const Batch<Scalar>& get_next_batch();
+        Batch<Scalar> get_next_batch();
         
         ~BatchCreator();
-    
-        
+
     private:
         
         ChunkExprCSR<Scalar> chunk_csr;

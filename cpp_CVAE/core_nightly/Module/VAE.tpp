@@ -11,24 +11,26 @@
 
 template <typename Scalar>
 VAE<Scalar>::VAE(
-    SequentialModule<Scalar>& encoder,
-    SequentialModule<Scalar>& decoder,
-    DenseLinear<Scalar>& mu_layer,
-    DenseLinear<Scalar>& logvar_layer
-){   
+    std::shared_ptr<SequentialModule<Scalar>> encoder,
+    std::shared_ptr<SequentialModule<Scalar>> decoder,
+    std::shared_ptr<DenseLinear<Scalar>> mu_layer,
+    std::shared_ptr<DenseLinear<Scalar>> logvar_layer
+):
+  encoder(encoder),
+  decoder(decoder),
+  mu_layer(mu_layer),
+  logvar_layer(logvar_layer),
+  layers_vector([&]() {
+      std::vector<std::shared_ptr<Layer<Scalar>>> vec;
+      vec.reserve(encoder->get_layers_vector().size() + decoder->get_layers_vector().size() + 2);
+      vec.insert(vec.end(), encoder->get_layers_vector().begin(), encoder->get_layers_vector().end());
+      vec.push_back(mu_layer);
+      vec.push_back(logvar_layer);
+      vec.insert(vec.end(), decoder->get_layers_vector().begin(), decoder->get_layers_vector().end());
+      return vec;
+  }())
 
-    this->encode = encoder;
-    this->decoder = decoder;
-    this->mu_layer = mu_layer;
-    this->logvar_layer = logvar_layer;
-
-    //Add all layers to layer vector;
-    this->layers_vector.reserve(this->encoder->get_layers_vector().size() + this->decoder->get_layers_vector().size() + 2);
-    this->layers_vector.insert(this->layers_vector.end(), this->encoder->get_layers_vector().begin(), this->encoder->get_layers_vector().end());
-    this->layers_vector.push_back(this->mu_layer);
-    this->layers_vector.push_back(this->logvar_layer);
-    this->layers_vector.insert(this->layers_vector.end(), this->decoder->get_layers_vector().begin(), this->decoder->get_layers_vector().end());
-}
+{}
 
 //Dense input
 template <typename Scalar>
@@ -76,10 +78,10 @@ MatrixD<Scalar> VAE<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
     dL_dlogvar += 0.5 * (std.array().square() -1).matrix(); //grad from KL loss
 
     //3)backprop into mu and logvar Layers
-    MatrixD<Scalar> mu_layer_downstream_grad = this->mu_layer.backward(dL_dmu);
-    MatrixD<Scalar> logvar_layer_downstream_grad = this->logvar_layer.backward(dL_dlogvar);
+    MatrixD<Scalar> mu_layer_downstream_grad = this->mu_layer->backward(dL_dmu);
+    MatrixD<Scalar> logvar_layer_downstream_grad = this->logvar_layer->backward(dL_dlogvar);
 
     //4)backprop through encoder
-    return this->encoder.backward(mu_layer_downstream_grad + logvar_layer_downstream_grad); //Add them because of some multivariate calculus chain rule stuff. Idk, 
+    return this->encoder->backward(mu_layer_downstream_grad + logvar_layer_downstream_grad); //Add them because of some multivariate calculus chain rule stuff. Idk, 
 }
 

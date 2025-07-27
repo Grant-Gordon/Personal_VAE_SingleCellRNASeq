@@ -6,10 +6,11 @@
 #include "Layer.h"
 template<typename Scalar>
 SequentialModule<Scalar>::SequentialModule(
-    std::vector<std::shared_ptr<Layer<Scalar>>>&& layers_vector
-){
-    this->layers_vector = std::move(layers_vector);
-}
+    const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector
+):
+layers_vector(layers_vector)
+
+{}
 
 //Dense input
 template<typename Scalar>
@@ -25,7 +26,7 @@ MatrixD<Scalar> SequentialModule<Scalar>::forward(const MatrixD<Scalar>& input){
 template<typename Scalar>
 MatrixD<Scalar> SequentialModule<Scalar>::forward(const Batch<Scalar>& input){
     if(!this->supports_sparse_input()){
-        throw runtime_error("Sparse input not supported by this SequentialModule");
+        throw std::runtime_error("Sparse input not supported by this SequentialModule");
     }
     MatrixD<Scalar> out = this->layers_vector[0]->forward(input);
     for(size_t i = 1; i < this->layers_vector.size(); ++i){
@@ -49,11 +50,3 @@ bool SequentialModule<Scalar>::supports_sparse_input() const{
     return !this->layers_vector.empty() && this->layers_vector[0]->supports_sparse_input();
 }
 
-template<typename Scalar>
-void SequentialModule<Scalar>::zero_grad(){
-    for (auto& layer : this->layers_vector){
-        if(layer->has_trainable_params()){
-            layer->zero_grad();
-        }
-    }
-}

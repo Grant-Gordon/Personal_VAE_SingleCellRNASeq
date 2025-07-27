@@ -1,7 +1,9 @@
 # compile_and_train.py
 import os
 import subprocess
+import shutil
 import yaml
+import argparse
 #from config.config_parser import parse_config
 from config.generate_config_hpp import write_config_header
 
@@ -33,15 +35,23 @@ def run_cpp_executable(build_dir, binary_name="main"):
     subprocess.run([binary_path], check=True)
 
 if __name__ == "__main__":
-    config_yaml_path = "./config/example_config.yaml" #TODO: ARG parse this to prevent hardcoding config paths. 
-    config = load_yaml(config_yaml_path)
-    build_dir = config["global"]["build_dir"]
-    CMakeLists_home_dir  = config["global"]["CMakeLists_home_dir"]
+    parser = argparse.ArgumentParser(description="Compile and optionally run CVAE C++ backend.")
+    parser.add_argument("--config", type=str, default="./config/example_config.yaml", help="Path to YAML config")
+    parser.add_argument("--test", action="store_true", help="Run C++ unit tests instead of training executable")
 
+    args = parser.parse_args()
+    config = load_yaml(args.config)
+
+    build_dir = config["global"]["build_dir"]
+    CMakeLists_home_dir = config["global"]["CMakeLists_home_dir"]
+    executable = "run_tests" if args.test else config["global"]["cpp_executable"]
 
     os.makedirs(build_dir, exist_ok=True)
 
-    build_metadata_vocab(config)
-    write_config_header(config_yaml_path, f'{build_dir}/config_values.h', f'{build_dir}/config_objects.h')  # external_context optional
-    build_cpp_backend(build_dir, CMakeLists_home_dir) 
-    #run_cpp_executable(config["global"]["build_dir"], config["cpp_executable"]) #uncomment to train.  //TDOO: include cpp_executable name in config (i.e. update CMakeList with set() or smake -D{})
+    #build_metadata_vocab(config)
+    #write_config_header(args.config, f'{build_dir}/config_values.h', f'{build_dir}/config_objects.h')
+    shutil.copy("./config/test_hardcoded_config_values.h", f"{build_dir}/config_values.h")
+    shutil.copy("./config/test_hardcoded_config_objects.h", f"{build_dir}/config_objects.h")
+
+    build_cpp_backend(build_dir, CMakeLists_home_dir)
+    run_cpp_executable(build_dir, executable)

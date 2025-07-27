@@ -15,11 +15,18 @@ class Module{
             throw std::runtime_error("Sparse input not supported for this Module");
         }
         virtual bool supports_sparse_input() const {return false;}
-        virtual void zero_grad() = 0;
+        
+        virtual void zero_grad(){
+            for (auto& layer : this->layers_vector){
+                if(layer->has_trainable_params()){
+                    layer->zero_grad();
+                }
+            }
+        }
         
         const std::vector<std::shared_ptr<Layer<Scalar>>>& get_layers_vector()const {return this->layers_vector;};
 
         virtual ~Module() = default;
     protected:
-        const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
+       const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;
 };

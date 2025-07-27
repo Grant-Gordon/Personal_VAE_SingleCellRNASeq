@@ -8,7 +8,7 @@
 template <typename Scalar>
 class SequentialModule : public Module<Scalar>{
     public:
-        SequentialModule(std::vector<std::shared_ptr<Layer<Scalar>>>&& layers_vector);
+        SequentialModule(const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector);
         
         MatrixD<Scalar> forward(const MatrixD<Scalar>& input) override;
         MatrixD<Scalar> backward(const MatrixD<Scalar>& upstream_grad) override;
@@ -16,8 +16,9 @@ class SequentialModule : public Module<Scalar>{
         MatrixD<Scalar> forward(const Batch<Scalar>& input) override;
         
         bool supports_sparse_input() const override;
-        void zero_grad()override;
 
     private:
         const std::vector<std::shared_ptr<Layer<Scalar>>> layers_vector;    
 };
+
+#include "SequentialModule.tpp"

@@ -21,7 +21,7 @@ Adam<Scalar>::Adam( int beta1, int beta2, int epsilon
 }
 
 template <typename Scalar>
-void Adam<Scalar>::step(std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector) {
+void Adam<Scalar>::step(const std::vector<std::shared_ptr<Layer<Scalar>>>& layers_vector) {
     ++this->timestep;
     #pragma omp parallel for
     for (auto& layer : layers_vector) {

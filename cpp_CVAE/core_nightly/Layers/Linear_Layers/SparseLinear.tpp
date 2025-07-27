@@ -44,7 +44,7 @@ template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
     ASSERT(!input.empty());
     ASSERT(this->weights.rows() == this->bias.size());
-    this->input_cache = input;
+    this->input_cache_ptr = &input; //TODO cannot move a const & 
     
     const unsigned int batch_size = static_cast<int>(input.size());
     MatrixD<Scalar> out(batch_size, this->output_dim); //Pre-allocate MatrixD to populate with SSR forward ouput
@@ -52,11 +52,10 @@ MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
     #pragma omp parallel for
     for(size_t i =0; i < batch_size; ++i){
         VectorD<Scalar> ssr_output = this->bias;
-        ASSERT(input[i].indices.size() == input[i].data.size());
-        for (int j = 0; j < input[i].nnz; ++j){
-            ASSERT(std::isfinite(input[i].data[j]));
-            int idx = input[i].indices[j];
-            Scalar val = input[i].data[j];
+        for (int j = 0; j < (*input[i]).nnz; ++j){
+            ASSERT(std::isfinite((*input[i]).data[j]));
+            int idx = (*input[i]).indices[j];
+            Scalar val = (*input[i]).data[j];
             ssr_output += val * this->weights.row(idx).transpose();
         }
         out.row(i) = ssr_output;
@@ -67,10 +66,10 @@ MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
 
 template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
-    ASSERT(upstream_grad.rows() == static_cast<int>(this->input_cache.size()));
+    ASSERT(upstream_grad.rows() == static_cast<int>((*this->input_cache_ptr).size()));
     ASSERT(upstream_grad.cols() == this->output_dim);
 
-    const int batch_size = static_cast<int>(this->input_cache.size());
+    const int batch_size = static_cast<int>((*this->input_cache_ptr).size());
     MatrixD<Scalar> downstream_grad(batch_size, this->input_dim);
    
     this->get_grad_weights().setZero();
@@ -102,11 +101,10 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
     //  = upstream_grad^T * input
     #pragma omp parallel for
     for(int i = 0; i < batch_size; ++i){
-        const SingleSparseRow<Scalar>& row = this->input_cache[i];
+        const SingleSparseRow<Scalar>& row = *(*this->input_cache_ptr)[i]; //batch stores unique_ptrs so need to dereference 
         const VectorD<Scalar> upstream_row = upstream_grad.row(i).transpose();
         
         MatrixD<Scalar>& local_grad = thread_local_weights_grad[omp_get_thread_num()];
-        ASSERT(row.nnz <= row.indices.size() && row.nnz <= row.data.size());
         for(size_t j = 0; j < row.nnz; ++j){
             int col = row.indices[j];
             ASSERT(col >= 0 && col < this->input_dim);
@@ -131,10 +129,15 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
 
 template <typename Scalar>
 Batch<Scalar>& SparseLinear<Scalar>::get_input_cache(){
-    return this->input_cache;
+    return *this->input_cache_ptr;
 }
 
 template <typename Scalar>
 const Batch<Scalar>& SparseLinear<Scalar>::get_input_cache()const{
+    return *this->input_cache_ptr;
+}
+
+template <typename Scalar>
+const Batch<Scalar>* SparseLinear<Scalar>::get_input_cache_ptr() const{
     return this->input_cache;
 }

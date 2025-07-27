@@ -28,9 +28,7 @@ class TrainableLayer : public Layer<Scalar> {
     
         const unsigned int get_input_dim() const {return this->input_dim;}
         const unsigned int get_output_dim() const {return this->output_dim;}
-
-
-
+        
     protected: 
         MatrixD<Scalar> weights;
         MatrixD<Scalar> grad_weights;
