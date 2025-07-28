@@ -43,7 +43,7 @@ CVAE/scripts/slurm_run_cvae_human.sh
 #  Legacy           #
 #####################
 Legacy/
-
+**/*deprecated*
 #  cpp_cvae         #
 #####################
 **/build
