@@ -16,7 +16,7 @@ SparseLinear<Scalar>::SparseLinear(
 {
     this->input_dim = input_dim;
     this->output_dim = output_dim;
-    std::mt19937 gen(configV::Global__seed);
+    std::  gen(configV::Global__seed);
     
     this->weights = MatrixD<Scalar>(output_dim, input_dim);
     this->grad_weights = MatrixD<Scalar>(output_dim, input_dim);

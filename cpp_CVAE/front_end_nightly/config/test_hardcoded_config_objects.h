@@ -39,7 +39,7 @@ namespace configO {
     auto d3 = std::make_shared<DenseLinear<float>>(512, 60000, glorot);
     auto ad3 = std::make_shared<RELULayer<float>>();
 
-    // Vectors
+    // Layer Vectors
     std::vector<std::shared_ptr<Layer<float>>> encoder_layers = {e1, ae1, e2, ae2, e3, ae3};
     std::vector<std::shared_ptr<Layer<float>>> decoder_layers = {d1, ad1, d2, ad2, d3, ad3};
 

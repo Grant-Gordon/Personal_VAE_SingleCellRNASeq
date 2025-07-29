@@ -32,7 +32,7 @@ class TrainableLayer : public Layer<Scalar> {
     protected: 
         MatrixD<Scalar> weights;
         MatrixD<Scalar> grad_weights;
-
+        //NOTE: If you dont want biases e.g. vae latent layers, could just 0 them out -\_o_/-
         VectorD<Scalar> bias;
         VectorD<Scalar> grad_bias;
 
