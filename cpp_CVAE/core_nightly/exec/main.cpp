@@ -6,8 +6,10 @@
 #include "Module.h"
 #include "Trainer.h"
 #include "utils_all.h"
+#include "macros.h"
 
 int main(){
+    VERBOSEL1("Executing main()");
 
     using scalar = std::remove_const_t<decltype(configV::Global__scalar)>;
  
@@ -18,6 +20,7 @@ int main(){
     // auto optim(std::move(configO::optim)); 
     
     Trainer<scalar> trainer(std::move(configO::model), std::move(configO::optim), counts_files_list, metadata_files_list);
+    VERBOSEL1("Starting Training");
     trainer.train();
 
     return 0;

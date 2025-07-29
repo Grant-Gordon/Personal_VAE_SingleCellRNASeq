@@ -5,6 +5,7 @@
 #include "custom_types.h"
 #include "BatchCreator.h"
 #include "get_ChunkExprCSR_from_npz.tpp"
+#include "macros.h"
 
 template <typename Scalar>
 Trainer<Scalar>::Trainer(
@@ -23,7 +24,9 @@ metadata_files_list(std::move(metadata_files_list))
 
 template <typename Scalar>
 void Trainer<Scalar>::train(){
+    VERBOSEL1("Inside Trainer::trian");
     for(int epoch = 0; epoch < configV::Training__epochs; ++epoch){
+        VERBOSEL1("Starting next epoch");
         //TODO: shuffle chunks 
         for(const std::string& count_file : count_files_list){
             ChunkExprCSR<Scalar> chunk_csr = get_ChunkExprCSR_from_npz<Scalar>(count_file);
@@ -37,7 +40,7 @@ void Trainer<Scalar>::train(){
 //chunk level training
 template <typename Scalar>
 void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr){
-
+    VERBOSEL2("Inside Trainer::train_on_chunk")
     BatchCreator bc = BatchCreator(chunk_csr);
 
     while(!bc.all_batches_preloaded){
@@ -48,7 +51,7 @@ void Trainer<Scalar>::train_on_chunk(const ChunkExprCSR<Scalar>& chunk_csr){
 //TODO: realizing I unfortunatly kinda hardcoded this for SSRMSE
 template <typename Scalar>
 void Trainer<Scalar>::train_on_batch(const Batch<Scalar>& batch){
-
+    VERBOSEL2("Inside Trainer::train_on_batch")
     auto reconstructed = model->forward(batch);
     Scalar loss = loss::SSRMSELoss<Scalar>::compute(reconstructed, batch);
     MatrixD<Scalar> loss_gradient = loss::SSRMSELoss<Scalar>::gradients(reconstructed, batch);

@@ -1,8 +1,8 @@
-//SequentialModuel.h
+//SequentialModule.h
 #pragma once
 #include <vector>
 #include "custom_types.h"
-#include "Module.h"//TODO:rename to actual Module 
+#include "Module.h"
 #include "Layer.h"
 
 template <typename Scalar>

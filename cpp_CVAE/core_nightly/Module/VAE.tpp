@@ -8,6 +8,7 @@
 #include "Module.h"
 #include "DenseLinear.h"
 #include "SequentialModule.h"
+#include "macros.h"
 
 template <typename Scalar>
 VAE<Scalar>::VAE(
@@ -35,40 +36,79 @@ VAE<Scalar>::VAE(
 //Dense input
 template <typename Scalar>
 MatrixD<Scalar> VAE<Scalar>::forward(const MatrixD<Scalar>& input){
+    ASSERT(input.rows() > 0 && input.cols() > 0);
     MatrixD<Scalar> encoded = this->encoder->forward(input);
+    DASSERT(encoded.rows() == input.rows());
+
+
     this->mu_cache = this->mu_layer->forward(encoded);
     this->logvar_cache = this->logvar_layer->forward(encoded);
+    //Validate cache shapes
+    DASSERT(mu_cache.rows() == encoded.rows() && mu_cache.cols() > 0);
+    DASSERT(logvar_cache.rows() == encoded.rows());
+    DASSERT(mu_cache.rows() == logvar_cache.rows());
+    DASSERT(mu_cache.cols() == logvar_cache.cols());
+
     MatrixD<Scalar> z = this->reparameterize(this->mu_cache, this->logvar_cache);
+    //Validate reparameterized shapes
+    DASSERT(z.rows() == mu_cache.rows());
+    DASSERT(z.cols() == mu_cache.cols());
+
     MatrixD<Scalar> decoded = this->decoder->forward(z);
+    DASSERT(decoded.rows() == input.rows());
+
     return decoded;
 }
 
 //Sparse Input
 template <typename Scalar>
 MatrixD<Scalar> VAE<Scalar>::forward(const Batch<Scalar>& input){
+    ASSERT(!input.empty());
     MatrixD<Scalar> encoded = this->encoder->forward(input);
+    DASSERT(encoded.rows() == input.rows());
+
+
     this->mu_cache = this->mu_layer->forward(encoded);
     this->logvar_cache = this->logvar_layer->forward(encoded);
+    //Validate cache shapes
+    DASSERT(mu_cache.rows() == encoded.rows() && mu_cache.cols() > 0);
+    DASSERT(logvar_cache.rows() == encoded.rows());
+    DASSERT(mu_cache.rows() == logvar_cache.rows());
+    DASSERT(mu_cache.cols() == logvar_cache.cols());
+
     MatrixD<Scalar> z = this->reparameterize(this->mu_cache, this->logvar_cache);
+    //Validate reparameterized shapes
+    DASSERT(z.rows() == mu_cache.rows());
+    DASSERT(z.cols() == mu_cache.cols());
+
     MatrixD<Scalar> decoded = this->decoder->forward(z);
+    DASSERT(decoded.rows() == input.rows());
+
     return decoded;
 }
 
 
 template <typename Scalar>
 MatrixD<Scalar> VAE<Scalar>::reparameterize(const MatrixD<Scalar>& mu, const MatrixD<Scalar>& logvar){
-    MatrixD<Scalar> std = (0.5 * logvar).array().exp().matrix();// logvar = log(std^2)
-    this->epsilon_cache = MatrixD<Scalar>::Random(mu.rows(), mu.cols());//TODO: This might throw a bug
-    return mu + (this->epsilon_cache * std);
+    ASSERT(mu.rows() == logvar.rows() && mu.cols() == logvar.cols());
+    ASSERT(mu.rows() > 0 && mu.cols() > 0);
+
+    MatrixD<Scalar> std = (0.5 * logvar.array()).exp().matrix();
+    this->epsilon_cache = MatrixD<Scalar>::Random(mu.rows(), mu.cols());
+    return mu + this->epsilon_cache.cwiseProduct(std);
 }
 
 template <typename Scalar>
 MatrixD<Scalar> VAE<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
+    DASSERT(upstream_grad.rows() > 0 && upstream_grad.cols() > 0);
+    
     //recompute std from logvar
     MatrixD<Scalar> std = (0.5 * this->logvar_cache.array()).exp().matrix();
+    
     //1)backprop through decoder with Recon loss
     MatrixD<Scalar> dL_dz = this->decoder->backward(upstream_grad);
-    
+    DASSERT(dL_dz.rows() == this->mu_cache.rows() && dL_dz.cols() == this->mu_cache.cols());
+
     //2)backward through the Reparameterization trick + KL loss 
     //dL/d_mu
     MatrixD<Scalar> dL_dmu = dL_dz + this->mu_cache; //grads from recon grad + KL
