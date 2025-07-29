@@ -1,3 +1,4 @@
+//SparseLinear.tpp
 #pragma once
 #include <omp.h>
 #include <random>
@@ -14,69 +15,106 @@ SparseLinear<Scalar>::SparseLinear(
     InitFn<Scalar> init_fn 
 )
 {
-    this->input_dim = input_dim;
-    this->output_dim = output_dim;
-    std::  gen(configV::Global__seed);
+    VERBOSEL2("Inside SparseLinear::SparseLinear")
+    /*
+    SHAPE ASSERTIONS: 
+    input:         [std::vector size == batch_Size]
+    weights:       [output_dim × input_dim]
+    bias:          [output_dim × 1]
+    weights^T:     [input_dim × output_dim]
+    grad_weights:  [output_dim × input_dim]
+    grad_bias:     [output_dim × 1]
+    */
+   
+   //Validate inputs
+   ASSERT(input_dim > 0 && output_dim > 0);
+   
+   this->input_dim = input_dim;
+   this->output_dim = output_dim;
+   std::mt19937 gen(configV::Global__seed);
+   
+   this->weights = MatrixD<Scalar>(output_dim, input_dim);
+   this->grad_weights = MatrixD<Scalar>(output_dim, input_dim);
+   this->bias = VectorD<Scalar>::Zero(output_dim);
+   this->grad_bias = VectorD<Scalar>::Zero(output_dim);
+   
+    //Validate W/b shape and dims properly assigned
+    DASSERT(this->input_dim > 0 && this->output_dim > 0);
+    DASSERT(this->weights.rows() == this->output_dim && this->weights.cols() == this->input_dim);
+    DASSERT(this->bias.rows() == output_dim && this->bias.cols() == 1);
     
-    this->weights = MatrixD<Scalar>(output_dim, input_dim);
-    this->grad_weights = MatrixD<Scalar>(output_dim, input_dim);
-    this->bias = VectorD<Scalar>::Zero(output_dim);
-    this->grad_bias = VectorD<Scalar>::Zero(output_dim);
     
-    ASSERT(this->input_dim > 0 && this->output_dim > 0);
-    ASSERT(this->weights.rows() == this->output_dim && this->weights.cols() == this->input_dim);
-    ASSERT(this->bias.size() == output_dim);
-
-
-
     for (size_t i = 0; i < output_dim; ++i){
-        this->bias(0,i) = init_fn(input_dim, output_dim, gen); //TODO: confirm order of args is correct
-        ASSERT(std::isfinite(this->bias(0,i)));
+        this->bias(i) = init_fn(input_dim, output_dim, gen);
+        DASSERT(std::isfinite(this->bias(i)));
+        
         for (size_t j = 0; j < input_dim; ++j){
             this->weights(i,j) = init_fn(input_dim, output_dim, gen);
-            ASSERT(std::isfinite(this->weights(i,j)));
+            DASSERT(std::isfinite(this->weights(i,j)));
         }
     }
     
+    VERBOSEL2("Finished SparseLinear::SparseLinear")
 }
 
 template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
+    VERBOSEL2("Inside SparseLinear::forward");
+    
     ASSERT(!input.empty());
-    ASSERT(this->weights.rows() == this->bias.size());
+    DASSERT(this->weights.rows() == this->output_dim);
+    DASSERT(this->weights.cols() == this->input_dim);
+    DASSERT(this->bias.size() == this->output_dim);
+
     this->input_cache_ptr = &input; //TODO cannot move a const & 
     
-    const unsigned int batch_size = static_cast<int>(input.size());
+    const unsigned int batch_size = static_cast<unsigned int>(input.size());
     MatrixD<Scalar> out(batch_size, this->output_dim); //Pre-allocate MatrixD to populate with SSR forward ouput
+    //Validate ouput dim allocation
+    DASSERT(out.rows() == batch_size);
+    DASSERT(out.cols() == this->output_dim);
 
     #pragma omp parallel for
     for(size_t i =0; i < batch_size; ++i){
+        ASSERT(input[i]); //Not Null
+        const SingleSparseRow<Scalar>& row = *index[i];
+        ASSERT(row.nnz>= 0); //empty rows shouldny be in sparse formats
+
         VectorD<Scalar> ssr_output = this->bias;
-        for (int j = 0; j < (*input[i]).nnz; ++j){
-            ASSERT(std::isfinite((*input[i]).data[j]));
-            int idx = (*input[i]).indices[j];
-            Scalar val = (*input[i]).data[j];
-            ssr_output += val * this->weights.row(idx).transpose();
+
+        for (int j = 0; j < row.nnz; ++j){
+            const Scalar val = row.data[j];
+            const int idx = row.indices[j];
+
+            DASSERT(std::isfinite(val));
+            ASSERT(idx >= 0 && idx < this->input_dim);
+            
+            ssr_output += val * this->weights.col(idx);
         }
-        out.row(i) = ssr_output;
+        out.row(i) = ssr_output.transpose(); //bias + weights  = [out;ut_dim x 1] -> row
+        
     }
+    VERBOSEL2("Finisehd SparseLinear::forward");
     return out;
 }
 
 
 template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
-    ASSERT(upstream_grad.rows() == static_cast<int>((*this->input_cache_ptr).size()));
+    VERBOSEL2("Inside SparseLinear::backward");
+   
+    const int batch_size = static_cast<int>(this->input_cache_ptr->size());//TODO maybe need to derefernce input-cache_ptr?
+   //Validate input shape
+    ASSERT(upstream_grad.rows() == batch_size);
     ASSERT(upstream_grad.cols() == this->output_dim);
 
-    const int batch_size = static_cast<int>((*this->input_cache_ptr).size());
     MatrixD<Scalar> downstream_grad(batch_size, this->input_dim);
+    this->grad_weights.setZero();//TODO confirm these are initialized somwhere? or if they need to be?
+    this->grad_bias.setZero();
    
-    this->get_grad_weights().setZero();
-    this->get_grad_bias().setZero();
-    ASSERT(this->get_grad_weights().rows() == this->get_weights().rows());
-    ASSERT(this->get_grad_weights().cols() == this->get_weights().cols());
-    ASSERT(this->get_grad_bias().size() == this->get_bias().size());
+    DASSERT(this->grad_weights.rows() == this->weights.rows());
+    DASSERT(this->grad_weights.cols() == this->weights.cols());
+    DASSERT(this->grad_bias.size() == this->bias.size());
 
     
     //gradient of loss wrt bias
@@ -103,27 +141,28 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
     for(int i = 0; i < batch_size; ++i){
         const SingleSparseRow<Scalar>& row = *(*this->input_cache_ptr)[i]; //batch stores unique_ptrs so need to dereference 
         const VectorD<Scalar> upstream_row = upstream_grad.row(i).transpose();
-        
         MatrixD<Scalar>& local_grad = thread_local_weights_grad[omp_get_thread_num()];
+        
         for(size_t j = 0; j < row.nnz; ++j){
-            int col = row.indices[j];
+            const int col = row.indices[j];
             ASSERT(col >= 0 && col < this->input_dim);
             
             Scalar val = row.data[j];
             ASSERT(std::isfinite(val));
 
             local_grad.col(col) += upstream_row * val;
-            ASSERT(local_grad.cols() > col);
         }
 
-        downstream_grad.row(i) = (this->get_weights() * upstream_row).transpose();
-        ASSERT((this->get_weights() * upstream_row).rows() == this->output_dim);
+        downstream_grad.row(i) = (upstream_grad.transpose() * this->weights); //upstream_grad^T * W = [1 x output_dim] * [outputdim x 1]
+        DASSERT(dowstream_grad.col(i) == this->input_dim);
+        DASSERT(dowstream_grad.row(i) == 1);
 
     }
     //reduce thread-local grad_weights
     for (const auto& local : thread_local_weights_grad){
-        this->get_grad_weights()+= local;
+        this->grad_weights+= local;
     }
+    VERBOSEL2("Finished SparseLinear::backward");
     return downstream_grad;
 }
 

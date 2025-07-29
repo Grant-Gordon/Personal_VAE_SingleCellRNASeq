@@ -1,5 +1,6 @@
 //SparseLinear.h
 #pragma once
+#include <random>
 #include "Layer.h"
 #include "TrainableLayer.h"
 #include "custom_types.h"
@@ -23,6 +24,6 @@ class SparseLinear : public TrainableLayer<Scalar>{
 
         ~SparseLinear() override = default;
     private:
-        const Batch<Scalar>* input_cache_ptr; //TODO const pointers are confusing? think this allows me to reassgn for each new batch??
+        const Batch<Scalar>* input_cache_ptr; //const T * ptr should allow for reassigning ptr, but not mutating data being pointed to
 };
 #include "SparseLinear.tpp"
