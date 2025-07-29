@@ -6,7 +6,7 @@
 #include <Eigen/Dense>
 
 template <typename Scalar>
-using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+using MatrixD = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>; //Eigen::Matrix <typename Scaalr, int RowsAtCompileTime, int ColsAtCompileTime>
 
 template <typename Scalar>
 using VectorD = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
