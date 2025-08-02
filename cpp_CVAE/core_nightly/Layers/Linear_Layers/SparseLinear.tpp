@@ -15,7 +15,7 @@ SparseLinear<Scalar>::SparseLinear(
     InitFn<Scalar> init_fn 
 )
 {
-    VERBOSEL2("Inside SparseLinear::SparseLinear")
+    VERBOSEL2("Inside SparseLinear::SparseLinear");
     /*
     SHAPE ASSERTIONS: 
     input:         [std::vector size == batch_Size]
@@ -54,7 +54,7 @@ SparseLinear<Scalar>::SparseLinear(
         }
     }
     
-    VERBOSEL2("Finished SparseLinear::SparseLinear")
+    VERBOSEL2("Finished SparseLinear::SparseLinear");
 }
 
 template <typename Scalar>
@@ -77,7 +77,7 @@ MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
     #pragma omp parallel for
     for(size_t i =0; i < batch_size; ++i){
         ASSERT(input[i]); //Not Null
-        const SingleSparseRow<Scalar>& row = *index[i];
+        const SingleSparseRow<Scalar>& row = *input[i];
         ASSERT(row.nnz>= 0); //empty rows shouldny be in sparse formats
 
         VectorD<Scalar> ssr_output = this->bias;
@@ -85,7 +85,6 @@ MatrixD<Scalar> SparseLinear<Scalar>::forward(const Batch<Scalar>& input){
         for (int j = 0; j < row.nnz; ++j){
             const Scalar val = row.data[j];
             const int idx = row.indices[j];
-
             DASSERT(std::isfinite(val));
             ASSERT(idx >= 0 && idx < this->input_dim);
             
@@ -103,6 +102,17 @@ template <typename Scalar>
 MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_grad){
     VERBOSEL2("Inside SparseLinear::backward");
    
+    /*
+    SHAPE ASSERTIONS: 
+    input:         [std::vector size == batch_Size]
+    weights:       [output_dim × input_dim]
+    bias:          [output_dim × 1]
+    weights^T:     [input_dim × output_dim]
+    upstream_grad: [batch_size x output_dim]
+    dmnstrm_grad:  []
+    grad_weights:  [output_dim × input_dim]
+    grad_bias:     [output_dim × 1]
+    */
     const int batch_size = static_cast<int>(this->input_cache_ptr->size());//TODO maybe need to derefernce input-cache_ptr?
    //Validate input shape
     ASSERT(upstream_grad.rows() == batch_size);
@@ -153,9 +163,10 @@ MatrixD<Scalar> SparseLinear<Scalar>::backward(const MatrixD<Scalar>& upstream_g
             local_grad.col(col) += upstream_row * val;
         }
 
-        downstream_grad.row(i) = (upstream_grad.transpose() * this->weights); //upstream_grad^T * W = [1 x output_dim] * [outputdim x 1]
-        DASSERT(dowstream_grad.col(i) == this->input_dim);
-        DASSERT(dowstream_grad.row(i) == 1);
+        downstream_grad.row(i) = (upstream_grad.row(i) * this->weights); //upstream.row(i) * W = [1 x output_dim] * [output_dim x input_dim] = [1 x input_dim]
+        DASSERT(downstream_grad.row(i).cols() == this->input_dim);
+        DASSERT(downstream_grad.row(i).rows() == 1);
+
 
     }
     //reduce thread-local grad_weights

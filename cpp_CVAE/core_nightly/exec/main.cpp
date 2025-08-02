@@ -1,4 +1,5 @@
 #include <type_traits>
+#include <pybind11/embed.h>
 #include "config_objects.h"
 #include "custom_types.h"
 #include "Layer_all.h"
@@ -10,6 +11,7 @@
 
 int main(){
     VERBOSEL1("Executing main()");
+    pybind11::scoped_interpreter guard{}; //TODO: Needed for loading????
 
     using scalar = std::remove_const_t<decltype(configV::Global__scalar)>;
  

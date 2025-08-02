@@ -16,11 +16,20 @@ def build_metadata_vocab(config):
     # TODO: implement metadata vocabulary builder
     pass
 
-def build_cpp_backend(build_dir, CMakeList_home_dir):
-    os.makedirs(build_dir, exist_ok=True)
-    subprocess.run(["cmake", f"-DCONFIG_BUILD_DIR={build_dir}", f"{CMakeList_home_dir}"], cwd=build_dir, check=True)
-    subprocess.run(["make", "-j"], cwd=build_dir, check=True)
+def build_cpp_backend(build_dir, cmake_dir, debug_mode=False, verbose_mode=-1):
+    cmake_cmd = [
+        "cmake",
+        f"-S{cmake_dir}",
+        f"-B{build_dir}",
+        f"-DCONFIG_BUILD_DIR={build_dir}"
+    ]
+    if debug_mode:
+        cmake_cmd.append("-DDEBUG_MODE=ON")
+    if verbose_mode >= 0:
+        cmake_cmd.append(f"-DVERBOSE_MODE={verbose_mode}")
 
+    subprocess.run(cmake_cmd, check=True)
+    subprocess.run(["cmake", "--build", build_dir], check=True)
 
 # #DEBUG BUILD
 # def build_cpp_backend (build_dir: str, CMakeList_home_dir: str):
@@ -38,6 +47,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compile and optionally run CVAE C++ backend.")
     parser.add_argument("--config", type=str, default="./config/example_config.yaml", help="Path to YAML config")
     parser.add_argument("--test", action="store_true", help="Run C++ unit tests instead of training executable")
+    parser.add_argument("--debug", action="store_true", help="Enable debug assertions (DASSERT)")
+    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=-1, help="Set verbosity level (0–2)")
 
     args = parser.parse_args()
     config = load_yaml(args.config)
@@ -53,5 +64,5 @@ if __name__ == "__main__":
     shutil.copy("./config/test_hardcoded_config_values.h", f"{build_dir}/config_values.h")
     shutil.copy("./config/test_hardcoded_config_objects.h", f"{build_dir}/config_objects.h")
 
-    build_cpp_backend(build_dir, CMakeLists_home_dir)
+    build_cpp_backend(build_dir, CMakeLists_home_dir, debug_mode=args.debug, verbose_mode=args.verbose)
     run_cpp_executable(build_dir, executable)

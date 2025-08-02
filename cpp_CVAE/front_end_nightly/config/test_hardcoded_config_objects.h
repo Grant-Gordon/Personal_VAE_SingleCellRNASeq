@@ -20,7 +20,7 @@ namespace configO {
 
 
     // Encoder
-    auto e1 = std::make_shared<SparseLinear<float>>(60000, 512, glorot);
+    auto e1 = std::make_shared<SparseLinear<float>>(60530, 512, glorot);
     auto ae1 = std::make_shared<RELULayer<float>>();
     auto e2 = std::make_shared<DenseLinear<float>>(512, 256, glorot);
     auto ae2 = std::make_shared<RELULayer<float>>();
@@ -32,11 +32,11 @@ namespace configO {
     auto logvar_layer = std::make_shared<DenseLinear<float>>(128, 128, glorot);
 
     // Decoder
-    auto d1 = std::make_shared<SparseLinear<float>>(128, 256, glorot);
+    auto d1 = std::make_shared<DenseLinear<float>>(128, 256, glorot);
     auto ad1 = std::make_shared<RELULayer<float>>();
     auto d2 = std::make_shared<DenseLinear<float>>(256, 512, glorot);
     auto ad2 = std::make_shared<RELULayer<float>>();
-    auto d3 = std::make_shared<DenseLinear<float>>(512, 60000, glorot);
+    auto d3 = std::make_shared<DenseLinear<float>>(512, 60530, glorot);
     auto ad3 = std::make_shared<RELULayer<float>>();
 
     // Layer Vectors

@@ -2,39 +2,59 @@
 #pragma once
 #include "custom_types.h"
 #include "config_values.h"
+#include "macros.h"
 
 
 template <typename Scalar>
 BatchCreator<Scalar>::BatchCreator(
     const ChunkExprCSR<Scalar>& chunk_csr
 ):
-chunk_csr(chunk_csr)
+chunk_csr(chunk_csr),
+stop_flag(false)
 {
+    VERBOSEL2("Inside BatchCreator Constructor");
+    ASSERT(this->chunk_csr.shape[0]> 0); //make sure not empty
+    ASSERT(configV::Training__batch_size > 0);
+
     this->total_batches_loaded = 0;
     this->all_batches_preloaded = false;
     this->num_batches_in_chunk = (this->chunk_csr.shape[0] + configV::Training__batch_size -1) / configV::Training__batch_size; //B=3 s=11, (11+2)/3 = 4
     this->final_batch_size = (this->chunk_csr.shape[0] % configV::Training__batch_size ==0) ? configV::Training__batch_size : this->chunk_csr.shape[0] % configV::Training__batch_size; // handles final batch 
     this->generate_shuffled_split_batch_ids();
 
-    //NOTE prelaod_batches is only allcated 1 thread. 
-    this->preload_thread = std::thread(&BatchCreator::preload_batches, this);
+    ASSERT(this->num_batches_in_chunk > 0);
+    ASSERT(this->final_batch_size > 0);
+    VERBOSEL2("this->final_batch_size: '" << this->final_batch_size << "'");
+    
+
+
+    // //NOTE prelaod_batches is only allcated 1 thread. 
+    // VERBOSEL2("Creating Thread at Target &BatchCreator::preload_batches");
+    // this->preload_thread = std::thread(&BatchCreator::preload_batches, this);
+    VERBOSEL2("Finished BatchCreator Constructor");
 }
 
 //TODO: create benchmark to determine if batches are consumed faster than created, if so add multiple preload threads rather than just one. 
 template <typename Scalar>
 void BatchCreator<Scalar>::preload_batches(){
+    ASSERT(configV::Data__batches_to_preload > 0);
+    VERBOSEL2("Inside prelaod_batches");
     for(int i= 0; i < this->num_batches_in_chunk; ++i){
+        VERBOSEL2("this->stop_flag: '" << this->stop_flag <<"'");
         if(this->stop_flag){break;}
         //TODO: add assert to confirm that it is only ever the final batch that this occures in. i.e. no wierd shuffling going on
         //Handles final batch where batch might be smaller than  batch_size
         int actual_batch_size = (i == this->num_batches_in_chunk -1) ? this->final_batch_size : configV::Training__batch_size;
-
-        
+        VERBOSEL2("configV::Training__batch_size: '" << configV::Training__batch_size<<"'");
+        VERBOSEL2("Actual_batch_size: '" << actual_batch_size<<"'");
+        VERBOSEL2("Just before preload_batches RAII");
         { //RAII, mutex is relased once scope ends
+            VERBOSEL2("Inside RAII Mutex scope");
             std::unique_lock<std::mutex> lock(queue_mutex);
             //wait until there is room in the queue
             this->queue_cv.wait(lock, [this]() {
-                return this->preloaded_batch_queue.size() < configV::Data__batches_to_preload || this->stop_flag;
+                VERBOSEL2("Preload thread waiting on queue space");
+                return this->preloaded_batch_queue.size() < configV::Data__batches_to_preload || this->stop_flag || this->all_batches_preloaded;
             });
             if (this->stop_flag){break;}
         }
@@ -44,6 +64,7 @@ void BatchCreator<Scalar>::preload_batches(){
             
             std::unique_lock<std::mutex> lock(queue_mutex);
             preloaded_batch_queue.push(std::move(batch));
+            VERBOSEL2("Prelaoded_batch_queue recieved a push");
             queue_cv.notify_all(); //Hey trainer, Theres a batch ready    
         }
 
@@ -55,10 +76,14 @@ void BatchCreator<Scalar>::preload_batches(){
 //NOTE: actual_batch_size != batch_size, the final batch in a chunk may be smaller than batch_size if chunk_samples % batch_size != 0
 template <typename Scalar>
 Batch<Scalar> BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int actual_batch_size){//TODO: actual input_batch size not really used anoymore is it?
+    VERBOSEL2("Inside BatchCreator::generate_batch");
+    DASSERT(actual_batch_size > 0);
+    DASSERT(batch_sample_ids !=nullptr);
+    
     // construct SSR samples corresponding to the batch sample ids in the chunk csr, and push to a vector
     Batch<Scalar> batch;
     batch.reserve(actual_batch_size); //TODO: size is not valid 
-
+    
     //TODO: confirm this doesn't break with batches smaller than batchsize 
     //TODO: point of optimization - could thread this but need to be careful, might starve threads in forward pass. 
     for(int i = 0; i < actual_batch_size ; ++i){
@@ -67,10 +92,10 @@ Batch<Scalar> BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int ac
         int start = this->chunk_csr.indptr_ptr_data[row];
         int end = this->chunk_csr.indptr_ptr_data[row + 1];
         int nnz = end - start;
-
+        
         const int* indices = &this->chunk_csr.cols_ptr_data[start];
         const Scalar* data = &this->chunk_csr.vals_ptr_data[start];
-
+        
         std::unique_ptr<SingleSparseRow<Scalar>> ssr = std::make_unique<SingleSparseRow<Scalar>>();
         ssr->indices = indices;
         ssr->data  = data;
@@ -78,12 +103,15 @@ Batch<Scalar> BatchCreator<Scalar>::generate_batch(int* batch_sample_ids, int ac
         
         batch.push_back(std::move(ssr));
     }
+    DASSERT(batch.size() == actual_batch_size);
     
+    VERBOSEL2("Finished BatchCreator::generate_batch");
     return batch; //NOTE: Putting faith in gcc RVO- Return Value Optimization, turns out compilers naturalyl do move semantics when possible -\_O_/-
 }
 
 template <typename Scalar>
 void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
+    VERBOSEL2("Inside BatchCreator::generate_shuffled_split_batch_ids");
     int num_samples = this->chunk_csr.shape[0];
 
     this->flat_chunk_sample_ids.resize(num_samples);
@@ -95,21 +123,34 @@ void BatchCreator<Scalar>::generate_shuffled_split_batch_ids(){
     this->shuffled_split_batch_ids.reserve(this->num_batches_in_chunk);
     
     for (int i = 0; i < this->num_batches_in_chunk; ++i){
-        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_ids[i * configV::Training__batch_size]);
+        int start_idx = i * configV::Training__batch_size;
+        int remaining = num_samples - start_idx;
+        int actual_size = std::min(configV::Training__batch_size, remaining);
+        ASSERT(actual_size > 0);
+        this->shuffled_split_batch_ids.push_back(&this->flat_chunk_sample_ids[start_idx]);
     }
+    VERBOSEL2("Finished BatchCreator::generate_shuffled_split_batch_ids");
 }
 
 template <typename Scalar>
 Batch<Scalar> BatchCreator<Scalar>::get_next_batch(){
+    VERBOSEL2("Inside get_next_batch");
+    VERBOSEL2("Trainer attempting to aquire loc in BatchCreator::get_next_batch");
+    
     std::unique_lock<std::mutex> lock(this->queue_mutex); //RAII
+    VERBOSEL2("Trainer acquired lock in BatchCreator::get_next_batch");
     queue_cv.wait(lock, [this](){ //[&] means capture all local vars by reference (local vars visible to lambda)
         return !preloaded_batch_queue.empty() || this->all_batches_preloaded || this->stop_flag; //wait until not empty or finished 
     });
     
     
-    //TDOO: Ensure Trainer handles empty return when finished w chunk
-    if (preloaded_batch_queue.empty()){
-        return{}; //Done with chunk
+    //Only return empty batch once all batches have been trained on. 
+    if (preloaded_batch_queue.empty() && this->all_batches_preloaded){
+        return{};
+    }
+    
+    while(this->preloaded_batch_queue.empty()){
+        this->queue_cv.wait(lock);
     }
 
     Batch<Scalar> batch = std::move(this->preloaded_batch_queue.front());
@@ -127,3 +168,10 @@ BatchCreator<Scalar>::~BatchCreator(){
     }
 }
 
+
+//TODO: ig see if this works?
+template <typename Scalar>
+void BatchCreator<Scalar>::start_thread(){
+    VERBOSEL2("Creating Thread at Target &BatchCreator::preload_batches from ");
+    this->preload_thread = std::thread(&BatchCreator::preload_batches, this);
+}

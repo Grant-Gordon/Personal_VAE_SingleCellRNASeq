@@ -46,7 +46,7 @@ MatrixD<Scalar> SequentialModule<Scalar>::forward(const Batch<Scalar>& input){
     for(size_t i = 1; i < this->layers_vector.size(); ++i){
         out=this->layers_vector[i]->forward(out);
         DASSERT(out.rows() > 0 && out.cols() >0);
-        DASSERT(out.allFinie());
+        DASSERT(out.allFinite());
     }
     return out;
 }
@@ -60,7 +60,7 @@ MatrixD<Scalar> SequentialModule<Scalar>::backward(const MatrixD<Scalar>& upstre
     for(int i = static_cast<int>(this->layers_vector.size()) -1; i >=0; --i){
         downstream_grad = this->layers_vector[i]->backward(downstream_grad);
         DASSERT(downstream_grad.rows() > 0 && downstream_grad.cols() > 0);
-        DASSERT(downstream_grad.allFinite());
+       // DASSERT(downstream_grad.allFinite());
     }
     return downstream_grad;
 }

@@ -65,7 +65,7 @@ template <typename Scalar>
 MatrixD<Scalar> VAE<Scalar>::forward(const Batch<Scalar>& input){
     ASSERT(!input.empty());
     MatrixD<Scalar> encoded = this->encoder->forward(input);
-    DASSERT(encoded.rows() == input.rows());
+    DASSERT(encoded.rows() == input.size());
 
 
     this->mu_cache = this->mu_layer->forward(encoded);
@@ -82,7 +82,7 @@ MatrixD<Scalar> VAE<Scalar>::forward(const Batch<Scalar>& input){
     DASSERT(z.cols() == mu_cache.cols());
 
     MatrixD<Scalar> decoded = this->decoder->forward(z);
-    DASSERT(decoded.rows() == input.rows());
+    DASSERT(decoded.rows() == input.size());
 
     return decoded;
 }

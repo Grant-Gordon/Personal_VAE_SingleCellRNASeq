@@ -4,6 +4,16 @@ project(CVAE_CPP)
 set(CMAKE_CXX_STANDARD 17)
 set(CONFIG_BUILD_DIR "" CACHE PATH "Path to generated config_[objects/values]_.h")
 
+# === Optional debug/verbose flags ===
+option(DEBUG_MODE "Enable debug assertions (DASSERT, DSTATIC_ASSERT)" OFF)
+set(VERBOSE_MODE -1 CACHE STRING "Verbosity level (0-2)")
+
+if(DEBUG_MODE)
+    add_compile_definitions(DEBUG_MODE)
+endif()
+
+add_compile_definitions(VERBOSE_MODE=${VERBOSE_MODE})
+
 # === Python + Pybind ===
 set(PYBIND11_DIR ${CMAKE_SOURCE_DIR}/external/pybind11)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)

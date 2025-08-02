@@ -15,6 +15,7 @@ class BatchCreator{
        bool all_batches_preloaded;
         BatchCreator(const ChunkExprCSR<Scalar>& chunk_csr);
         Batch<Scalar> get_next_batch();
+        void start_thread(); //TODO; double check this
         
         ~BatchCreator();
 

@@ -47,6 +47,8 @@ DenseLinear<Scalar>::DenseLinear(
 template <typename Scalar>
 MatrixD<Scalar> DenseLinear<Scalar>::forward(const MatrixD<Scalar>& input){ //TODO could enforece passing by R-val to avoid copying at assignment of input_cache, but supposedly Eigens move semnatics are not neccissarily faster????
     VERBOSEL2("Inside DenseLinear::forward"); 
+    VERBOSEL2("DenseLinear::forward input shape: [" << input.rows() << ", " << input.cols() << "]");
+
 /*
 SHAPE ASSERTIONS: 
     input:         [batch_size × input_dim]
@@ -57,7 +59,7 @@ SHAPE ASSERTIONS:
     output:        [batch_size × output_dim]
 */
     //Validate input shape
-    ASSERT(input.cols() == this->input_size);
+    ASSERT(input.cols() == this->input_dim);
     ASSERT(input.rows() <= configV::Training__batch_size && input.rows() > 0);    
     //Confirm W/b shape
     DASSERT(this->weights.rows() == this->output_dim && this->weights.cols() == this->input_dim);
@@ -66,7 +68,7 @@ SHAPE ASSERTIONS:
     this->input_cache = input;
     
     //Check for successful Assignment
-    DASSERT(input_cache.cols() == this->input_size);
+    DASSERT(input_cache.cols() == this->input_dim);
     DASSERT(input_cache.rows() <= configV::Training__batch_size && input_cache.rows() > 0);    
 
     //y = xW^T + b (broadcasted): where input = [batch_size X input_dim], W = [output_dim X input_dim], bias = [output_dim X 1], input*W^T = [batch_size X input_dim] * [input_dim X output_dim] = [batch_sizd X output_dim]
@@ -94,15 +96,18 @@ SHAPE ASSERTIONS:
     grad_weights:   [output_dim x input_dim]
     grad_bias:      [output_dim x 1]
     downstream_grad:[batch_size x input_dim]    
-*/
-    VERBOSEL2("Inside DenseLinear::backward");
-    //Validate input
-    ASSERT(upstream_grad.rows() == this->input_cache.rows()); //both rows == batch_size
-    ASSERT(upstream_grad.cols() == this->output_dim);
-    
+    */
+   VERBOSEL2("Inside DenseLinear::backward");
+   //Validate input
+   ASSERT(upstream_grad.rows() == this->input_cache.rows()); //both rows == batch_size
+   ASSERT(upstream_grad.cols() == this->output_dim);
+   
+   //Confirm input cache sizes
+   VERBOSEL2("input_cache shape: [" << this->input_cache.rows() << ", " << this->input_cache.cols() << "]");
+   VERBOSEL2("upstream_grad shape: [" << upstream_grad.rows() << ", " << upstream_grad.cols() << "]");
+   VERBOSEL2("weights shape: [" << this->weights.rows() << ", " << this->weights.cols() << "]");
+   
     //Validate Layers member sizes
-    DASSERT(this->grad_weights.rows() == this->weights.rows());
-    DASSERT(this->grad_weights.cols() == this->weights.cols());
     DASSERT(this->input_cache.cols() == this->weights.cols());
    
     //  = dL/dW 
@@ -110,12 +115,11 @@ SHAPE ASSERTIONS:
     //      dL/dy = upstream_grad
     //      dy/dW = x | specifically if y_i = [sum over j (w_ij * x_i + b_i)]  then dy_i/dW_ij = x_j
     //  = upstream_grad^T * input
-    this->grad_weights = upstream_grad.transpose() * this->input_cache;
+    this->grad_weights = upstream_grad.transpose() * this->input_cache; //[60530, 32] * [32, 512] = 60530, 512
     //Confirm Shape is unchanged
     DASSERT(this->grad_weights.rows() == this->weights.rows());
     DASSERT(this->grad_weights.cols() == this->weights.cols());
     
-    //grad_bias [out_d *1]
     //  = dL/db 
     //  = dL/dy * dy/db
     //      dL/dy = upstream_grad
@@ -126,7 +130,6 @@ SHAPE ASSERTIONS:
     //Confirm Shape is unchanged 
     DASSERT(this->grad_bias.size() == this->bias.size());
     
-    //grad_input [B * in_d]
     //  = dL/dx 
     //  = dL/dy * dy/dx 
     //      dL/dy = upstream_grad
