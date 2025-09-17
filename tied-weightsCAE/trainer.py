@@ -79,7 +79,7 @@ class Trainer():
         self.model.train()
     
         for epoch in range(num_epochs):
-            
+            print(f"Beggining epoch: {epoch}")
             #loop chunks
             for expr_csr_chunk, meta_chunk in self.outer_loader:
                 inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk), field_specs=self.field_specs_dict, field_value_map=self.metadata_fields_vocabs)

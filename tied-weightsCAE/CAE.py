@@ -5,7 +5,7 @@ from torch import Tensor
 from typing import Dict, Tuple
 
 class CAE(nn.Module):
-    def __init__(self, input_dim:int, latent_dim:int, field_specs:Dict[Dict[str, int]]):
+    def __init__(self, input_dim:int, latent_dim:int, field_specs:Dict[str, Dict[str, int]]):
         super().__init__()
         self.input_dim = input_dim
         self.latent_dim = latent_dim
@@ -13,7 +13,7 @@ class CAE(nn.Module):
         #Encoder
         self.encoder = nn.Linear(input_dim, latent_dim, bias=False)
 
-        self.used_fields = [f for f, spec in field_specs.items() if spec.get("using"), False]
+        self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
 
         #Metadata per-field-head
         self.meta_heads - nn.ModuleDict()
