@@ -2,10 +2,6 @@
 import torch
 import torch.nn as nn
 from torch import Tensor
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-import numpy as np
-import scipy.sparse as sp
 from typing import Dict, Tuple
 
 class CAE(nn.Module):
@@ -17,26 +13,35 @@ class CAE(nn.Module):
         #Encoder
         self.encoder = nn.Linear(input_dim, latent_dim, bias=False)
 
+        self.used_fields = [f for f, spec in field_specs.items() if spec.get("using"), False]
+
         #Metadata per-field-head
-        self.meta_heads = nn.ModuleDict({field: nn.Linear(field["cardinality"], latent_dim) for field in field_specs}) #TODO: Should be using one hot for all fields regardless of cardinality. Should not be using embeddings. 
+        self.meta_heads - nn.ModuleDict()
+        for field in self.used_fields:
+            card = int(field_specs[field].get("cardinality", 0))
+            assert card> 0, f"field: {field} must have cardinality greater than 0"
+            self.meta_heads[field] = nn.Linear(card, latent_dim, bias=False) #TODO: bias on metaheads?
       
     
-    def forward(self, expr:Tensor, source_context, target_context) -> Tuple[Tensor, Tensor]:
+    def forward(self, expr:Tensor, source_context: Dict[str, Tensor], target_context:Dict[str, Tensor]) -> Tuple[Tensor, Tensor]:
         h = self.encoder(expr)   #h = X W^TS
 
 
-        os_list = []
-        ot_list = []
-        for field in self.field_specs.keys():
-            os_list.append(self.meta_heads[field](source_context[field])) 
-            ot_list.append(self.meta_heads[field](target_context[field])) 
-        os = torch.stack(os_list, dim=0).sum(dim=0) if os_list else torch.zeros_like(h)
-        ot = torch.stack(ot_list, dim=0).sum(dim=0) if ot_list else torch.zeros_like(h)
+        # Sum per-field offsets
+        if self.used_fields:
+            os_list = [self.meta_heads[f](source_context[f]) for f in self.used_fields]  # each [B, latent_dim]
+            ot_list = [self.meta_heads[f](target_context[f]) for f in self.used_fields]
+            os = torch.stack(os_list, dim=0).sum(dim=0)  # [B, latent_dim]
+            ot = torch.stack(ot_list, dim=0).sum(dim=0)  # [B, latent_dim]
+        else:
+            os = torch.zeros_like(h)
+            ot = torch.zeros_like(h)
+
         h_tilde = torch.relu(h - os) # integration loss = first_cycle_(hg-os) - second_cycle(hg-os). Need to cache h - os
         z = h_tilde + ot  # z = h - os + ot #TODO add RELU clipping to ensure nonneg
 
         expr_hat = torch.matmul(z, self.encoder.weight) # X_hat = (h - os + ot)W
-        recon_loss = nn.functional.mse_loss(expr_hat, expr, reduction="mean")
+        #recon_loss = nn.functional.mse_loss(expr_hat, expr, reduction="mean")
 
 
         return expr_hat, h_tilde 
