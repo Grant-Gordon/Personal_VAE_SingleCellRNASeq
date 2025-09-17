@@ -1,0 +1,73 @@
+#iny_outy_datalaoder.py
+import torch
+from torch.utils.data import Dataset, DataLoader
+from scipy import sparse
+import glob
+import pickle
+import os
+
+#Outy dataloader
+class ChunksDataset(Dataset):
+    def __init__(self, data_dir_path:str, meta_glob_pattern:str, gene_expr_glob_pattern:str):
+
+        meta_glob_path = os.path.join(data_dir_path, meta_glob_pattern)
+        gene_expr_glob_path = os.path.join(data_dir_path, gene_expr_glob_pattern)
+
+        meta_files = glob.glob(meta_glob_path).sort
+        gene_expr_files = glob.glob(gene_expr_glob_path).sort
+        self.chunks = list(zip(gene_expr_files, meta_files))
+
+
+    def __getitem__(self, index):
+        with open(self.chunks[index][0], 'rb') as f:
+            chunk_expr = sparse.load_npz(f)
+
+        with open(self.chunks[index][1], 'rb') as f:
+            chunk_meta = pickle.load(f)
+
+
+        return chunk_expr, chunk_meta
+    
+    def __len__(self):
+        return len(self.chunks)
+
+
+#iny dataloaders 
+class SingleChunkDataset(Dataset):
+    def __init__(self, chunk, field_specs, field_value_map):
+        
+        self.gene_expr_csr = chunk[0]
+        self.samples_in_chunk = self.gene_expr_csr.shape[0]
+        
+        self. meta = chunk[1]
+        self.field_specs = field_specs
+        self.field_value_map = field_value_map
+
+        self.used_fields = [f for f, spec in self.field_specs.items() if spec.get("using", False)] #TODO: Don't need to recompute for every chunk, fields will be the same every time 
+
+    def __getitem__(self, index):
+        row = self.gene_expr_csr[index]
+        expr = torch.tensor(row.toarray().flatten(), dtype=torch.float32)
+        
+        meta_row=self.meta.iloc[index]
+        meta_onehots = {}
+        for field in self.used_fields:
+            meta_onehots[field] = torch.tensor(self.meta_raw_to_onehot(meta_row), dtype=onehot)#TODO figure out how to actually passt his to pytorch
+
+        return expr, meta_onehots
+
+    def __len__(self):
+        return self.samples_in_chunk
+
+
+    def meta_raw_to_onehot(self, meta_row_raw):
+        return False #TODO: implement, should use self.json-schemas from init
+
+# #Trainier psuedo code
+# outerlaoder = DataLoader(ChunksDataset(DATA_DIR, GLOB_PATTERNS), num_workers=2, prefetch_factor=1)
+# for chunk in chunklaoder:
+#     innerloader = DataLoader(SingleChunkDataset(chunk, JSONS), num_workers=4, prefetch_factor=2))
+#     for batch in innerlaoder:
+#         heads[expr].forward(batch[0])
+#         for field in self.used_fields:
+#             heads[field].foward(batch[1][field])
