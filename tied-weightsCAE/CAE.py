@@ -16,11 +16,12 @@ class CAE(nn.Module):
         self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
 
         #Metadata per-field-head
-        self.meta_heads - nn.ModuleDict()
+        self.meta_heads = nn.ModuleDict()
         for field in self.used_fields:
             card = int(field_specs[field].get("cardinality", 0))
             assert card> 0, f"field: {field} must have cardinality greater than 0"
             self.meta_heads[field] = nn.Linear(card, latent_dim, bias=False) #TODO: bias on metaheads?
+            print(f"Instantiated meta_head for field: {field}.")
       
     
     def forward(self, expr:Tensor, source_context: Dict[str, Tensor], target_context:Dict[str, Tensor]) -> Tuple[Tensor, Tensor]:

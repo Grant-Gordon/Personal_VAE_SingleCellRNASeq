@@ -428,10 +428,7 @@ def run_metadata_preprocessing(
 
 
 
-
-
-
-if __name__ == "__main__":
+def main(raw_args=None):
     import argparse
     from pathlib import Path
 
@@ -462,7 +459,8 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true",
                         help="Do everything except writing JSON files.")
 
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
+    print(f"Running metadata_preprocessor with args: {vars(args)}")
 
     # build include_fields set from --include and/or --include-file
     include_fields = None
@@ -500,3 +498,8 @@ if __name__ == "__main__":
               f"with_vocab={sum(1 for v in vocab.values() if len(v) > 0)}")
         if args.dry_run:
             print("[summary] dry-run enabled; no files written.")
+
+
+
+if __name__ == "__main__":
+   main()

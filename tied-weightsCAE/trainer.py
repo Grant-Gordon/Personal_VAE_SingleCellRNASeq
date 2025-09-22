@@ -11,20 +11,6 @@ import random
 import json
 
 
-#############################
-DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/subset"
-META_GLOB="human_metadata_?.pkl"
-EXPR_GLOB="human_counts_?.npz" #NOTE: Glob uses ? not * as to only test on first 10 chunks
-#Preprocessed metadata 
-META_FIELDS_VOCABS_PATH="./metadata_vocab.json"  # { field_name: { value: idx, ... }, ... }   
-FIELD_SPECS_PATH="./metadata_field_specs.json"         #[ FieldSpec(field=..., cardinality=..., using=..., non_null_fraction=...), ... ]
-#Training
-LEARNING_RATE=0.001
-BATCH_SIZE=128
-#Model
-LATENT_DIM=128
-#############################
-
 class Trainer():
     def __init__(self,
                  data_dir="/mnt/projects/debruinz_project/july2024_census_data/subset",
@@ -51,6 +37,7 @@ class Trainer():
             self.field_specs_dict = json.load(f)
         with open(meta_fields_vocabs_path) as f:
             self.metadata_fields_vocabs = json.load(f)
+        print(f"Successfully loaded metadata JSON files - Inside Trainer.__init__()")
 
         #Dataloader for Chunks 
         chunks_dataset = ChunksDataset(self.data_dir, meta_glob_pattern=self.meta_glob, gene_expr_glob_pattern=self.expr_glob)
@@ -68,36 +55,44 @@ class Trainer():
             chunks_dataset,
             batch_size=1,
             shuffle=True,
-            num_workers=2,
-            prefetch_factor=1,
-            pin_memory=(self.device =="cude"),
+            num_workers=0,
+            #prefetch_factor=1,
+            persistent_workers=False,
+            #pin_memory=(self.device =="cuda"),
             collate_fn=lambda batch: batch[0],  #unwraps List: [(csr, meta)] into Tuple: (csr, meta)
             )
-    
+        print("Succesfully created model, optim, and outer_laoder - Inside Trainer.__init__()")
+
     
     def train(self, num_epochs:int):
         self.model.train()
-    
+        self.epoch_loss = 0.0
+        self.chunks_trained_on = 0
         for epoch in range(num_epochs):
             print(f"Beggining epoch: {epoch}")
             #loop chunks
+            self.chunk_num_in_epoch = 0
             for expr_csr_chunk, meta_chunk in self.outer_loader:
+                self.chunk_num_in_epoch
                 inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk), field_specs=self.field_specs_dict, field_value_map=self.metadata_fields_vocabs)
                 inner_loader = DataLoader(
                     inner_dataset,
-                    batch_size=128,
+                    batch_size=64,
                     shuffle=True,
-                    num_workers=4,
-                    prefetch_factor=2,
+                    num_workers=0,
+                    #prefetch_factor=1,
                     pin_memory=(self.device.type == "cuda"),
                     drop_last=False
                     )
                 
+                self.chunk_loss = 0.0
+                #loop batches 
                 for expr_batch, meta_batches in inner_loader:
                     expr_batch = expr_batch.to(self.device, non_blocking=True)
                     meta_batches = {k: v.to(self.device, non_blocking=True)for k,v in meta_batches.items()}
                     
                     self.train_on_batch(expr_batch, meta_batches)
+                print(f"Chunk Loss on chunk {self.chunk_num_in_epoch}: {self.chunk_loss}")
 
 
     
@@ -121,7 +116,8 @@ class Trainer():
         integration_loss = torch.nn.functional.mse_loss(integration_term_1, integration_term_2, reduction="mean")
 
         aggregate_loss = adversarial_loss + recon_loss_final + integration_loss
-
+        self.chunk_loss+= aggregate_loss
+        self.epoch_loss+= aggregate_loss
         
         aggregate_loss.backward()
         self.optimizer.step()
