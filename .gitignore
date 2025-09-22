@@ -19,6 +19,8 @@ personalVAEenv/*
 **/*submit*.sh
 **/*submission*.sh
 !**/sample_slurm_submission.sh
+**/job_monitor.sh
+
 #       fafo's      #
 #####################
 **/fafo.py
@@ -32,6 +34,9 @@ metadata_preprocessing/encoded_metadata_files
 metadata_preprocessing/JobOutputs
 metadata_preprocessing/submit*.sh
 metadata_preprocessing/uniq_field_vocab_jsons
+tied-weightsCAE/Preprocessed_metadata/
+tied-weightsCAE/job-outputs/
+
 
 #  mhcvae           #
 #####################

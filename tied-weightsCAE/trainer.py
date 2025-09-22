@@ -21,6 +21,8 @@ class Trainer():
                  learning_rate=0.001,
                  batch_size = 128,
                  latent_dim = 128,
+                 batch_workers = 0,
+                 batch_prefetch_factor=0
                  ):
         self.data_dir= data_dir
         self.expr_glob = expr_glob
@@ -30,6 +32,8 @@ class Trainer():
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.latent_dim = latent_dim    
+        self.batch_workers = batch_workers
+        self.batch_prefetch_factor = batch_prefetch_factor
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         #Load in JSONs
@@ -55,10 +59,10 @@ class Trainer():
             chunks_dataset,
             batch_size=1,
             shuffle=True,
-            num_workers=0,
-            #prefetch_factor=1,
+            num_workers=1,
+            prefetch_factor=1,
             persistent_workers=False,
-            #pin_memory=(self.device =="cuda"),
+            pin_memory=(self.device == "cuda"),
             collate_fn=lambda batch: batch[0],  #unwraps List: [(csr, meta)] into Tuple: (csr, meta)
             )
         print("Succesfully created model, optim, and outer_laoder - Inside Trainer.__init__()")
@@ -73,17 +77,18 @@ class Trainer():
             #loop chunks
             self.chunk_num_in_epoch = 0
             for expr_csr_chunk, meta_chunk in self.outer_loader:
-                self.chunk_num_in_epoch
+                self.chunk_num_in_epoch+=1
+                self.chunks_trained_on+=1
                 inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk), field_specs=self.field_specs_dict, field_value_map=self.metadata_fields_vocabs)
                 inner_loader = DataLoader(
-                    inner_dataset,
-                    batch_size=64,
+                    dataset=inner_dataset,
+                    batch_size=self.batch_size,
                     shuffle=True,
-                    num_workers=0,
-                    #prefetch_factor=1,
+                    num_workers=self.batch_workers,
+                    prefetch_factor=self.batch_prefetch_factor,
                     pin_memory=(self.device.type == "cuda"),
                     drop_last=False
-                    )
+                )
                 
                 self.chunk_loss = 0.0
                 #loop batches 
