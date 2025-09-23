@@ -19,7 +19,7 @@ personalVAEenv/*
 **/*submit*.sh
 **/*submission*.sh
 !**/sample_slurm_submission.sh
-**/job_monitor.sh
+**/jstatus.sh
 
 #       fafo's      #
 #####################

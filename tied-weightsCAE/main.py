@@ -1,14 +1,16 @@
 from trainer import Trainer
 import metadata_preprocessor
+import time
 
 def main():
+    t0_start_main = time.time()
     #############################
     #Data
     DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/subset"
     META_GLOB="human_metadata_?.pkl"
     EXPR_GLOB="human_counts_?.npz" 
     #Preprocessed metadata 
-    RERUN_PREPROCESSOR=True
+    RERUN_PREPROCESSOR=False
     PREPROCESSOR_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/Preprocessed_metadata"
     META_FIELDS_VOCABS_FILE_NAME="metadata_vocab.json"
     FIELD_SPECS_FILE_NAME="metadata_field_specs.json"
@@ -49,8 +51,12 @@ def main():
 
     #############################
     if RERUN_PREPROCESSOR:
+        t0_preprocess_metadata=time.time()
         print(f"RERUN_PROCESSOR:{RERUN_PREPROCESSOR}")
         metadata_preprocessor.main(PREPROCESSOR_ARGS)
+        t1_preprocess_metadata = time.time() - t0_preprocess_metadata
+        print(f"[Time Preprocessing]: {t1_preprocess_metadata}, [Time Current]: {time.time()}")
+
     else:
         print(f"Metdata preprocessor was not used. \n\t Using preprocessed JSONS at:\n\t - {FIELD_SPECS_PATH}\n\t - {META_FIELDS_VOCABS_PATH}")
 
@@ -66,7 +72,11 @@ def main():
         batch_workers=BATCH_WORKERS,
         batch_prefetch_factor=BATCH_PREFETCH_FACTOR
     )
+    t0_start_training = time.time()
+    print(f"[Time Until Training]: {time.time() - t0_start_main}, [Time Current]: {time.time()}")
     trainer.train(num_epochs=NUM_EPOCHS)
+    print(f"[Time Spent Training]: {time.time() - t0_start_training}, [Time Current]: {time.time()}")
+    print(f"[Time Total]: {time.time() - t0_start_main}, [Time Current]: {time.time()}")
 
 
 

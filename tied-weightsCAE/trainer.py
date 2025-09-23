@@ -2,7 +2,7 @@
 import torch
 import torch.optim as optim
 from torch import Tensor
-import os
+import time
 from torch.utils.data import DataLoader
 from CAE import CAE
 from iny_outy_dataloader import SingleChunkDataset, ChunksDataset
@@ -13,17 +13,18 @@ import json
 
 class Trainer():
     def __init__(self,
-                 data_dir="/mnt/projects/debruinz_project/july2024_census_data/subset",
-                 expr_glob="human_counts_?.npz", #NOTE: Glob uses ? not * for hyphenated training
-                 meta_glob="human_metadata_?.pkl", #NOTE: Glob uses ? not * for hyphenated training
-                 field_specs_path="./metadata_vocab.json" ,
-                 meta_fields_vocabs_path="./metadata_field_specs.json",
-                 learning_rate=0.001,
-                 batch_size = 128,
-                 latent_dim = 128,
-                 batch_workers = 0,
-                 batch_prefetch_factor=0
-                 ):
+                data_dir="/mnt/projects/debruinz_project/july2024_census_data/subset",
+                expr_glob="human_counts_?.npz", #NOTE: Glob uses ? not * for hyphenated training
+                meta_glob="human_metadata_?.pkl", #NOTE: Glob uses ? not * for hyphenated training
+                field_specs_path="./metadata_vocab.json" ,
+                meta_fields_vocabs_path="./metadata_field_specs.json",
+                learning_rate=0.001,
+                batch_size = 128,
+                latent_dim = 128,
+                batch_workers = 0,
+                batch_prefetch_factor=0
+                ):
+        t0_init = time.time()
         self.data_dir= data_dir
         self.expr_glob = expr_glob
         self.meta_glob = meta_glob
@@ -51,7 +52,7 @@ class Trainer():
 
 
         #Model and Optimizer
-        self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device)
+        self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
         self.optimizer = optim.Adam(self.model.parameters(), lr = self.learning_rate)
 
 
@@ -66,19 +67,24 @@ class Trainer():
             collate_fn=lambda batch: batch[0],  #unwraps List: [(csr, meta)] into Tuple: (csr, meta)
             )
         print("Succesfully created model, optim, and outer_laoder - Inside Trainer.__init__()")
-
+        t1_init = time.time() - t0_init
+        print(f"[Time Initialing]: {t1_init}, [Current Time]: {time.time()}")
     
-    def train(self, num_epochs:int):
+    def train(self, num_epochs:int): #TODO: SOmething not right with GPU, check dcgm. 
+        t0_train = time.time()
         self.model.train()
         self.epoch_loss = 0.0
         self.chunks_trained_on = 0
         for epoch in range(num_epochs):
+            t0_epoch = time.time()
             print(f"Beggining epoch: {epoch}")
             #loop chunks
             self.chunk_num_in_epoch = 0
             for expr_csr_chunk, meta_chunk in self.outer_loader:
                 self.chunk_num_in_epoch+=1
                 self.chunks_trained_on+=1
+                self.sum_chunk_train_times=0.0
+                t0_chunk = time.time()
                 inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk), field_specs=self.field_specs_dict, field_value_map=self.metadata_fields_vocabs)
                 inner_loader = DataLoader(
                     dataset=inner_dataset,
@@ -91,19 +97,30 @@ class Trainer():
                 )
                 
                 self.chunk_loss = 0.0
+                self.batch_num_in_chunk=0
+                self.sum_batch_train_times=0.0
                 #loop batches 
                 for expr_batch, meta_batches in inner_loader:
-                    expr_batch = expr_batch.to(self.device, non_blocking=True)
-                    meta_batches = {k: v.to(self.device, non_blocking=True)for k,v in meta_batches.items()}
-                    
+                    t0_batch = time.time()
+                    expr_batch = expr_batch.to(self.device, dtype=torch.float32, non_blocking=True)
+                    meta_batches = {k: v.to(self.device, dtype=torch.float32, non_blocking=True)for k,v in meta_batches.items()}
+                
                     self.train_on_batch(expr_batch, meta_batches)
-                print(f"Chunk Loss on chunk {self.chunk_num_in_epoch}: {self.chunk_loss}")
+                    self.sum_batch_train_times += time.time() - t0_batch
+                    self.batch_num_in_chunk+=1
+                self.sum_chunk_train_times += time.time() - t0_chunk
 
+
+                print(f"Chunk Loss on chunk {self.chunk_num_in_epoch}: {self.chunk_loss}, [Time Ave-batch Training]: {self.sum_batch_train_times/self.batch_num_in_chunk}")
+            print(f"[Time Epoch {epoch}]: {time.time() - t0_epoch}, [Time Current]: {time.time()}, Time [Ave-Chunk training]: {self.sum_chunk_train_times / self.chunk_num_in_epoch}")
+        print(f"[Time Total Train]: {time.time() - t0_train}, [Time Current]: {time.time()}")
 
     
         
 
     def train_on_batch(self, expr_batch: Tensor, meta_batches: Dict[str, Tensor]):
+        current_batchs_size = expr_batch.size()[0] #TODO: Should be 0 or 1???
+
         self.optimizer.zero_grad()
         batch_s_context = {f: meta_batches[f] for f in self.model.used_fields}
 
@@ -121,8 +138,8 @@ class Trainer():
         integration_loss = torch.nn.functional.mse_loss(integration_term_1, integration_term_2, reduction="mean")
 
         aggregate_loss = adversarial_loss + recon_loss_final + integration_loss
-        self.chunk_loss+= aggregate_loss
-        self.epoch_loss+= aggregate_loss
+        self.chunk_loss+= (aggregate_loss/ current_batchs_size)
+        self.epoch_loss+= (aggregate_loss / current_batchs_size) #TODO: This math is not correct I dont think 
         
         aggregate_loss.backward()
         self.optimizer.step()
