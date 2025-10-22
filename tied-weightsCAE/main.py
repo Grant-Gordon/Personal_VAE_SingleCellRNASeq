@@ -69,6 +69,7 @@ def main():
         learning_rate=LEARNING_RATE,
         batch_size = BATCH_SIZE,
         latent_dim = LATENT_DIM,
+        classifier_latent_dim=LATENT_DIM,
         batch_workers=BATCH_WORKERS,
         batch_prefetch_factor=BATCH_PREFETCH_FACTOR
     )
