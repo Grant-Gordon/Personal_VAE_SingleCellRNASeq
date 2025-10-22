@@ -61,11 +61,10 @@ def main():
         meta_fields_vocabs_path=META_FIELDS_VOCABS_PATH,
         learning_rate=LEARNING_RATE,
         batch_size = BATCH_SIZE,
-        latent_dim = LATENT_DIM
+        latent_dim = LATENT_DIM,
+        classifier_latent_dim=LATENT_DIM
     )
     trainer.train(num_epochs=NUM_EPOCHS)
-
-
 
 if __name__=="__main__":
     main()

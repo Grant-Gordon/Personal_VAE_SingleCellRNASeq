@@ -27,7 +27,7 @@ personalVAEenv/*
 **/*fafo*.py
 **/*fafo*
 TODO.txt
-
+tw-clasifier_mental_model.txt
 #  metadata preproc #
 #####################
 metadata_preprocessing/encoded_metadata_files
@@ -56,6 +56,6 @@ Legacy/
 **/Poc_build/
 **/*PoC*/
 **/Builds
-#local personal venv
+#local/personal/venv
 **/venv/
 **/.vscode/
