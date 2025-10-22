@@ -61,7 +61,7 @@ class Trainer():
         self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
         self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict)
         self.generator_optimizer = optim.Adam(self.model.parameters(), lr = self.learning_rate)
-        self.classifier_optimizer = optim.adam(self.classifier.parameters(), lr = self.learning_rate)
+        self.classifier_optimizer = optim.Adam(self.classifier.parameters(), lr = self.learning_rate)
 
         self.outer_loader = DataLoader(
             chunks_dataset,

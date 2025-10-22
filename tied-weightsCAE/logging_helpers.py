@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-TB_OUTPUT_PATH = "/home/grant/research/czi/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/job-outputs"
+TB_OUTPUT_PATH = "/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/job-outputs"
 
 def init_logging():
     os.makedirs(TB_OUTPUT_PATH, exist_ok=True)
