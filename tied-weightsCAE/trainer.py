@@ -10,6 +10,7 @@ from context_classifier import ContextClassifier
 from iny_outy_dataloader import SingleChunkDataset, ChunksDataset
 from typing import Dict, Tuple, List, Any
 import random
+from collections import defaultdict
 import json
 import logging_helpers as log
 
@@ -25,8 +26,8 @@ class Trainer():
                 batch_size = 128,
                 latent_dim = 128,
                 classifier_latent_dim = 128,
-                batch_workers = 0,
-                batch_prefetch_factor=0
+                batch_workers = 1,
+                batch_prefetch_factor=1
                 ):
         t0_init = time.time()
         self.data_dir= data_dir
@@ -59,18 +60,19 @@ class Trainer():
 
         #Model and Optimizer
         self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
-        self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict)
+        self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict).to(self.device)
         self.generator_optimizer = optim.Adam(self.model.parameters(), lr = self.learning_rate)
         self.classifier_optimizer = optim.Adam(self.classifier.parameters(), lr = self.learning_rate)
 
+          
         self.outer_loader = DataLoader(
             chunks_dataset,
             batch_size=1,
             shuffle=True,
             num_workers=1,
             prefetch_factor=1,
-            persistent_workers=False,
-            pin_memory=(self.device == "cuda"),
+            persistent_workers=True,
+            pin_memory=(torch.cuda.is_available()),
             collate_fn=lambda batch: batch[0],  #unwraps List: [(csr, meta)] into Tuple: (csr, meta)
             )
         print("Succesfully created model, optim, and outer_laoder - Inside Trainer.__init__()")
@@ -88,7 +90,7 @@ class Trainer():
             print(f"Beggining epoch: {epoch}")
             #Establish Epoch Logging
             self.sum_chunk_train_times=0.0
-            self.epoch_loss_terms = {}
+            self.epoch_loss_terms = defaultdict(float)
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
             t0_epoch = time.time()  ###RESET LOGS
@@ -100,7 +102,7 @@ class Trainer():
                 self.chunks_trained_on+=1
                 self.batch_num_in_chunk=0 ###RESET LOGs
                 self.sum_batch_train_times=0.0
-                self.chunk_loss_terms = {}
+                self.chunk_loss_terms = defaultdict(float)
                 t0_chunk = time.time()
 
                 #Create Datalaoder to prelaod batches from Chunk
@@ -126,29 +128,37 @@ class Trainer():
                     #Compute Logs
                     self.sum_batch_train_times += time.time() - t0_batch
                     self.batch_num_in_chunk+=1
-                    for k,v in batch_loss_terms:
-                        self.chunk_loss_terms[k] += v
+                    for k,v in batch_loss_terms.items():
+                        self.chunk_loss_terms[k] += float(v) if torch.is_tensor(v) else float(v)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
-                log.per_chunk_loss(self.tbwriter, self.chunks_trained_on, self.chunk_loss_terms)
-                log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, self.chunk_loss_terms["classif"])
-                for k,v in self.chunk_loss_terms:
-                    self.epoch_loss_terms[k] += v
+                log.per_chunk_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_loss_terms))
+                if "classif" in self.chunk_loss_terms:
+                    log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_loss_terms["classif"]))
+                for k,v in self.chunk_loss_terms.items():
+                    self.epoch_loss_terms[k] += float(v)
                 self.sum_chunk_train_times += time.time() - t0_chunk
             #IN SCOPE EPOCH
-            log.per_epoch_loss(self.tbwriter, epoch, self.epoch_loss_terms)
-            log.per_epoch_classifier_loss(self.tbwriter, epoch, self.epoch_loss_terms["classif"])
+            log.per_epoch_loss(self.tbwriter, epoch, dict(self.epoch_loss_terms))
+            if "classif" in self.epoch_loss_terms:
+                log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_loss_terms["classif"]))
         self.tbwriter.close()
     
 
     def train_on_batch(self, expr_batch: Tensor, meta_batches: Dict[str, Tensor]):
         #current_batchs_size = expr_batch.size()[0] #TODO: Should be 0 or 1???
 
-        self.generator_optimizer.zero_grad()
-
         #Establish Metadata Contexts
         batch_s_context = {f: meta_batches[f] for f in self.model.used_fields}
         batch_t_context, changed_fields, t_as_idxs = self.trans_gen_protocol(batch_s_context)
+
+        #Protect against Frozen Classifier
+        self.classifier.eval()
+        for p in self.classifier.parameters():
+            p.requires_grad_(False)
+        self.model.train()
+        for p in self.model.parameters():
+            p.requires_grad_(True)
 
         #first_cycle
         expr_hat_s_to_t, integration_term_1  = self.model(expr_batch, batch_s_context, batch_t_context)
@@ -166,7 +176,7 @@ class Trainer():
         }
 
         #Generator Step
-        self.generator_optimizer.zero_grad()
+        self.generator_optimizer.zero_grad(set_to_none=True)
         aggregate_loss.backward()
         self.generator_optimizer.step()
         #self.nonneg_projecction_() #clamp? TODO:?
@@ -174,18 +184,21 @@ class Trainer():
        #TODO: determin ideal strat for Classifier training. E.g. warmup + while <accuracy_thresh? every batch? etc. 
         #Classifier Step (supervised on Real Data)
         if self.should_train_classifier():
-            self.classifier_optimizer.zero_grad()
             self.classifier.train()
+            for p in self.classifier.parameters():
+                p.requires_grad_(True)
+
             logits_real = self.classifier(expr_batch.detach())
-            s_as_idx = {f: torch.argmax(batch_s_context[f], dim=1) for f in self.model.used_fields} #conver onehot to int-idx for cross-entropy [0,0,1,0] -> 2, CE(logits, 2)
-            loss_c = 0.0
-            for f in self.model.used_fields:
-                loss_c += nn.functional.cross_entropy(logits_real[f], s_as_idx[f])
+            s_as_idx = {f: torch.argmax(batch_s_context[f], dim=1).to(self.device, non_blocking=True).long() for f in self.model.used_fields} #conver onehot to int-idx for cross-entropy [0,0,1,0] -> 2, CE(logits, 2)
+            classif_loss_term = [nn.functional.cross_entropy(logits_real[f], s_as_idx[f]) for f in self.model.used_fields]
+            loss_c = torch.stack(classif_loss_term).mean()
+
             
-            loss_c = loss_c / len(self.model.used_fields) #TODO: do I want to devide here?
+            self.classifier_optimizer.zero_grad(set_to_none=True)
             loss_c.backward()
-            loss_terms["classif"] = loss_c 
             self.classifier_optimizer.step()
+
+            loss_terms["classif"] = float(loss_c.item())
         return loss_terms
 
     def trans_gen_protocol(self, source_context):
@@ -219,6 +232,8 @@ class Trainer():
         return target_context, changed_fields, t_as_idxs
         
     def get_adversarial_loss(self, x_st:Tensor,  t_as_idxs:Dict[str,Tensor], changed_fields =List[str])-> Tensor:
+            self.classifier.to(self.device)
+
             with torch.no_grad():
                 for p in self.classifier.parameters():
                     p.requires_grad_(False)
@@ -231,7 +246,7 @@ class Trainer():
             return adv_loss
 
 
-    def should_train_classifier():
+    def should_train_classifier(self):
         return True
     
     #TODO: slight pretrain of classifier?

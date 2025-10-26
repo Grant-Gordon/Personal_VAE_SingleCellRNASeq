@@ -26,7 +26,7 @@ def per_chunk_loss(
     writer.add_scalars(f"loss/chunk_loss", {
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
-        'integ': chunk_loss_terms["integ "],
+        'integ': chunk_loss_terms["integ"],
         'adv': chunk_loss_terms["adv"] 
     }, chunks_trained_on)
 
@@ -42,23 +42,23 @@ def per_epoch_loss(
     writer.add_scalars(f"loss/epoch_loss", {
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
-        'integ': epoch_loss_terms["integ "],
+        'integ': epoch_loss_terms["integ"],
         'adv': epoch_loss_terms["adv"] 
     }, epoch)
 
 def per_chunk_classifier_loss(
         writer: SummaryWriter,
         chunks_trained_on: int,
-        chunk_classifier_loss: Dict[str, float]
+        chunk_classifier_loss: float
     )->None:
-    writer.add_scalars("loss/chunk_classifier_loss", chunk_classifier_loss, chunks_trained_on)
+    writer.add_scalar("loss/chunk_classifier_loss", chunk_classifier_loss, chunks_trained_on)
 
 def per_epoch_classifier_loss(
         writer: SummaryWriter,
         epoch: int,
-        epoch_classifier_loss: Dict[str, float]
+        epoch_classifier_loss: float
     )->None:
-    writer.add_scalars("loss/epoch_classifier_loss", epoch_classifier_loss, epoch)
+    writer.add_scalar("loss/epoch_classifier_loss", epoch_classifier_loss, epoch)
 
 
     
