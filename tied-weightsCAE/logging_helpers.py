@@ -15,7 +15,7 @@ def init_logging():
     writer = SummaryWriter(log_dir=os.path.join(TB_OUTPUT_PATH, "tensorboard_logs"))
     return writer 
 
-def per_chunk_loss(
+def per_chunk_raw_loss(
         writer: SummaryWriter,
         chunks_trained_on: int,
         chunk_loss_terms: Dict[str, float]
@@ -23,7 +23,7 @@ def per_chunk_loss(
     """
     Logs a summary of total, reconstruction, integration, and Adverserial loss at the end of each chunk.
     """
-    writer.add_scalars(f"loss/chunk_loss", {
+    writer.add_scalars(f"loss_raw/chunk_raw_loss", {
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
         'integ': chunk_loss_terms["integ"],
@@ -31,7 +31,23 @@ def per_chunk_loss(
     }, chunks_trained_on)
 
 
-def per_epoch_loss(
+def per_chunk_normed_loss(
+        writer: SummaryWriter,
+        chunks_trained_on: int,
+        chunk_loss_terms: Dict[str, float]
+    ) -> None:
+    """
+    Logs a summary of total, reconstruction, integration, and Adverserial loss at the end of each chunk.
+    """
+    writer.add_scalars(f"loss_normed/chunk_raw_loss", {
+        'total': chunk_loss_terms["aggreg"],
+        'recon': chunk_loss_terms["recon"],
+        'integ': chunk_loss_terms["integ"],
+        'adv': chunk_loss_terms["adv"] 
+    }, chunks_trained_on)
+
+
+def per_epoch_raw_loss(
         writer: SummaryWriter,
         epoch: int,
         epoch_loss_terms: Dict[str, float]
@@ -39,7 +55,22 @@ def per_epoch_loss(
     """
     Logs a summary of total, reconstruction, integration, and Adverserial loss at the end of each chunk.
     """
-    writer.add_scalars(f"loss/epoch_loss", {
+    writer.add_scalars(f"loss_raw/epoch_loss", {
+        'total': epoch_loss_terms["aggreg"],
+        'recon': epoch_loss_terms["recon"],
+        'integ': epoch_loss_terms["integ"],
+        'adv': epoch_loss_terms["adv"] 
+    }, epoch)
+
+def per_epoch_normed_loss(
+        writer: SummaryWriter,
+        epoch: int,
+        epoch_loss_terms: Dict[str, float]
+    ) -> None:
+    """
+    Logs a summary of total, reconstruction, integration, and Adverserial loss at the end of each chunk.
+    """
+    writer.add_scalars(f"loss_normed/epoch_loss", {
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
         'integ': epoch_loss_terms["integ"],
@@ -51,14 +82,14 @@ def per_chunk_classifier_loss(
         chunks_trained_on: int,
         chunk_classifier_loss: float
     )->None:
-    writer.add_scalar("loss/chunk_classifier_loss", chunk_classifier_loss, chunks_trained_on)
+    writer.add_scalar("loss_raw/chunk_classifier_loss", chunk_classifier_loss, chunks_trained_on)
 
 def per_epoch_classifier_loss(
         writer: SummaryWriter,
         epoch: int,
         epoch_classifier_loss: float
     )->None:
-    writer.add_scalar("loss/epoch_classifier_loss", epoch_classifier_loss, epoch)
+    writer.add_scalar("loss_raw/epoch_classifier_loss", epoch_classifier_loss, epoch)
 
 
     

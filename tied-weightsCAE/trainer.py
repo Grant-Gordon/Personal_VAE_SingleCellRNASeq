@@ -90,7 +90,8 @@ class Trainer():
             print(f"Beggining epoch: {epoch}")
             #Establish Epoch Logging
             self.sum_chunk_train_times=0.0
-            self.epoch_loss_terms = defaultdict(float)
+            self.epoch_raw_loss_terms = defaultdict(float)
+            self.epoch_normed_loss_terms = defaultdict(float)
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
             t0_epoch = time.time()  ###RESET LOGS
@@ -102,7 +103,8 @@ class Trainer():
                 self.chunks_trained_on+=1
                 self.batch_num_in_chunk=0 ###RESET LOGs
                 self.sum_batch_train_times=0.0
-                self.chunk_loss_terms = defaultdict(float)
+                self.chunk_raw_loss_terms = defaultdict(float)
+                self.chunk_normed_loss_terms = defaultdict(float)
                 t0_chunk = time.time()
 
                 #Create Datalaoder to prelaod batches from Chunk
@@ -124,24 +126,34 @@ class Trainer():
                     meta_batches = {k: v.to(self.device, dtype=torch.float32, non_blocking=True)for k,v in meta_batches.items()}
                     
                     #Train Batch 
-                    batch_loss_terms = self.train_on_batch(expr_batch, meta_batches)
+                    batch_raw_loss_terms, batch_normed_loss_terms = self.train_on_batch(expr_batch, meta_batches)
                     #Compute Logs
                     self.sum_batch_train_times += time.time() - t0_batch
                     self.batch_num_in_chunk+=1
-                    for k,v in batch_loss_terms.items():
-                        self.chunk_loss_terms[k] += float(v) if torch.is_tensor(v) else float(v)
+                    for k,v in batch_raw_loss_terms.items():
+                        self.chunk_raw_loss_terms[k] += float(v) if torch.is_tensor(v) else float(v)
+                    for k,v in batch_normed_loss_terms.items():
+                        self.chunk_normed_loss_terms[k] = float(v) if torch.is_tensor(v) else float(v)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
-                log.per_chunk_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_loss_terms))
-                if "classif" in self.chunk_loss_terms:
-                    log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_loss_terms["classif"]))
-                for k,v in self.chunk_loss_terms.items():
-                    self.epoch_loss_terms[k] += float(v)
+                log.per_chunk_raw_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_raw_loss_terms))
+                log.per_chunk_normed_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_normed_loss_terms))
+
+
+                if "classif" in self.chunk_raw_loss_terms:
+                    log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_raw_loss_terms["classif"]))
+                
+                for k,v in self.chunk_raw_loss_terms.items():
+                    self.epoch_raw_loss_terms[k] += float(v)
+                for k,v in self.chunk_normed_loss_terms.items():
+                    self.epoch_normed_loss_terms[k] += float(v)
+                
                 self.sum_chunk_train_times += time.time() - t0_chunk
             #IN SCOPE EPOCH
-            log.per_epoch_loss(self.tbwriter, epoch, dict(self.epoch_loss_terms))
-            if "classif" in self.epoch_loss_terms:
-                log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_loss_terms["classif"]))
+            log.per_epoch_raw_loss(self.tbwriter, epoch, dict(self.epoch_raw_loss_terms))
+            log.per_epoch_normed_loss(self.tbwriter, epoch, dict(self.epoch_normed_loss_terms))
+            if "classif" in self.epoch_raw_loss_terms:
+                log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
         self.tbwriter.close()
     
 
@@ -167,19 +179,24 @@ class Trainer():
         expr_hat_t_to_s, integration_term_2 = self.model(expr_hat_s_to_t, batch_t_context, batch_s_context)
 
         #Gather Loss Terms 
-        loss_terms = {   
-            "recon": (recon_loss_final := nn.functional.mse_loss(expr_batch, expr_hat_t_to_s, reduction="mean")),
-            "integ": (integration_loss := nn.functional.mse_loss(integration_term_1, integration_term_2, reduction="mean")),
-            "adv": (adversarial_loss := self.get_adversarial_loss(expr_hat_s_to_t, t_as_idxs, changed_fields)),
-            "aggreg": (aggregate_loss := adversarial_loss + recon_loss_final + integration_loss), #TODO add an orthogonality term?
+        raw_loss_terms = {   
+            "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, expr_hat_t_to_s, reduction="mean")),
+            "integ": (raw_integration_loss := nn.functional.mse_loss(integration_term_1, integration_term_2, reduction="mean")),
+            "adv": (raw_adversarial_loss := self.get_adversarial_loss(expr_hat_s_to_t, t_as_idxs, changed_fields)),
+            "aggreg": (raw_adversarial_loss + raw_recon_loss_final + raw_integration_loss), #TODO add an orthogonality term?
             "classif": 0.0
         }
 
+        normed_loss_terms = self.norm_loss_terms(raw_loss_terms)
+
+
         #Generator Step
         self.generator_optimizer.zero_grad(set_to_none=True)
-        aggregate_loss.backward()
+        normed_loss_terms["aggreg"].backward()
+        #clip gradients
+        grad_norm = nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0) #NOTE: max_norm hardcoded
         self.generator_optimizer.step()
-        #self.nonneg_projecction_() #clamp? TODO:?
+        #TODO: could log grad_norm 
        
        #TODO: determin ideal strat for Classifier training. E.g. warmup + while <accuracy_thresh? every batch? etc. 
         #Classifier Step (supervised on Real Data)
@@ -198,8 +215,8 @@ class Trainer():
             loss_c.backward()
             self.classifier_optimizer.step()
 
-            loss_terms["classif"] = float(loss_c.item())
-        return loss_terms
+            raw_loss_terms["classif"] = float(loss_c.item())
+        return raw_loss_terms, normed_loss_terms
 
     def trans_gen_protocol(self, source_context):
         # Pick a field to change
@@ -244,6 +261,16 @@ class Trainer():
                 adv_terms.append(nn.functional.cross_entropy(logits_trans[f], t_as_idxs[f])) # CE adds -log to stop gradient explosion slightly better than SM(1-P(t))
             adv_loss = torch.stack(adv_terms).mean() if adv_terms else x_st.new_zeros(())
             return adv_loss
+    
+    #TODO: EMA (Exponental Moving Average)? 
+    def norm_loss_terms(raw_terms):
+        nt={}
+        nt["recon"] = 0.7 * raw_terms["recon"] 
+        nt["integ"] = 0.25 * raw_terms["integ"]
+        nt["adv"] = 0.05 * raw_terms["adv"]     
+        nt["aggreg"] = sum(nt.values())
+        return raw_terms
+
 
 
     def should_train_classifier(self):

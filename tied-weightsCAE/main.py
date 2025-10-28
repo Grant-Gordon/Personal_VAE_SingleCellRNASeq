@@ -7,10 +7,10 @@ def main():
     #############################
     #Data
     DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/subset"
-    META_GLOB="human_metadata_?.pkl"
-    EXPR_GLOB="human_counts_?.npz" 
+    META_GLOB="human_metadata_*.pkl"
+    EXPR_GLOB="human_counts_*.npz" 
     #Preprocessed metadata 
-    RERUN_PREPROCESSOR=False
+    RERUN_PREPROCESSOR=True
     PREPROCESSOR_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/Preprocessed_metadata"
     META_FIELDS_VOCABS_FILE_NAME="metadata_vocab.json"
     FIELD_SPECS_FILE_NAME="metadata_field_specs.json"
@@ -41,7 +41,7 @@ def main():
     #Training
     LEARNING_RATE=0.001
     BATCH_SIZE=128
-    NUM_EPOCHS=2
+    NUM_EPOCHS=10
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=2
     #Model
@@ -76,8 +76,11 @@ def main():
     t0_start_training = time.time()
     print(f"[Time Until Training]: {time.time() - t0_start_main}, [Time Current]: {time.time()}")
     trainer.train(num_epochs=NUM_EPOCHS)
-    print(f"[Time Spent Training]: {time.time() - t0_start_training}, [Time Current]: {time.time()}")
-    print(f"[Time Total]: {time.time() - t0_start_main}, [Time Current]: {time.time()}")
+   
+#    time.strftime('%H:%M:%S', time.gmtime(12345)) #TODO: easier formating??
+    
+    print(f"[Time Spent Training - HHH.MM.SS]: {(train_time:= int(time.time() - t0_start_training))//3600:02d}|{(train_time%3600)//60:02d}|{train_time%60:02d} [Time Current]: {time.time():.2f}")
+    print(f"[Time Total]: {(time.time() - t0_start_main):.2f}, [Time Current]: {time.time():.2f}")
 
 
 
