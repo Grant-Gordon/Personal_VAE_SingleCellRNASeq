@@ -263,7 +263,7 @@ class Trainer():
             return adv_loss
     
     #TODO: EMA (Exponental Moving Average)? 
-    def norm_loss_terms(raw_terms):
+    def norm_loss_terms(self, raw_terms):
         nt={}
         nt["recon"] = 0.7 * raw_terms["recon"] 
         nt["integ"] = 0.25 * raw_terms["integ"]
