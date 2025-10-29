@@ -87,7 +87,7 @@ class Trainer():
         self.chunks_trained_on = 0 
 
         for epoch in range(num_epochs):
-            print(f"Beggining epoch: {epoch}")
+            print(f"Beggining epoch: {epoch} - Time: ~{time.time() - t0_train}")
             #Establish Epoch Logging
             self.sum_chunk_train_times=0.0
             self.epoch_raw_loss_terms = defaultdict(float)
@@ -101,10 +101,12 @@ class Trainer():
                 #Establish Chunk Logging 
                 self.chunk_num_in_epoch+=1 ###ITERATE LOGS
                 self.chunks_trained_on+=1
-                self.batch_num_in_chunk=0 ###RESET LOGs
+                self.batch_num_in_chunk=0 ###RESET LOGS
                 self.sum_batch_train_times=0.0
                 self.chunk_raw_loss_terms = defaultdict(float)
                 self.chunk_normed_loss_terms = defaultdict(float)
+                self.grad_ems = log.Ems(use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False)
+
                 t0_chunk = time.time()
 
                 #Create Datalaoder to prelaod batches from Chunk
@@ -130,24 +132,30 @@ class Trainer():
                     #Compute Logs
                     self.sum_batch_train_times += time.time() - t0_batch
                     self.batch_num_in_chunk+=1
-                    for k,v in batch_raw_loss_terms.items():
-                        self.chunk_raw_loss_terms[k] += float(v) if torch.is_tensor(v) else float(v)
-                    for k,v in batch_normed_loss_terms.items():
-                        self.chunk_normed_loss_terms[k] = float(v) if torch.is_tensor(v) else float(v)
+                    #Chunk loss logging
+                    for key in batch_raw_loss_terms.keys():
+                        raw_v = batch_raw_loss_terms[key]
+                        self.chunk_raw_loss_terms[key] += float(raw_v) if torch.is_tensor(raw_v) else float(raw_v)
+                        if key not in batch_normed_loss_terms: continue
+                        norm_v = batch_normed_loss_terms[key]
+                        self.chunk_normed_loss_terms[key] += float(norm_v) if torch.is_tensor(norm_v) else float(norm_v)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
                 log.per_chunk_raw_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_raw_loss_terms))
                 log.per_chunk_normed_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_normed_loss_terms))
-
-
+                log.per_chunk_grad_norms(self.tbwriter, self.chunks_trained_on, self.grad_ems)
+            
                 if "classif" in self.chunk_raw_loss_terms:
                     log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_raw_loss_terms["classif"]))
                 
-                for k,v in self.chunk_raw_loss_terms.items():
-                    self.epoch_raw_loss_terms[k] += float(v)
-                for k,v in self.chunk_normed_loss_terms.items():
-                    self.epoch_normed_loss_terms[k] += float(v)
-                
+                #Epoch Loss logging
+                for key in self.chunk_raw_loss_terms.keys():
+                    raw_v = self.chunk_raw_loss_terms[key]
+                    self.epoch_raw_loss_terms[key] += float(raw_v)
+                    if key not in batch_normed_loss_terms: continue
+                    norm_v = self.chunk_normed_loss_terms[key]
+                    self.epoch_normed_loss_terms[key] += float(norm_v)
+
                 self.sum_chunk_train_times += time.time() - t0_chunk
             #IN SCOPE EPOCH
             log.per_epoch_raw_loss(self.tbwriter, epoch, dict(self.epoch_raw_loss_terms))
@@ -189,15 +197,15 @@ class Trainer():
 
         normed_loss_terms = self.norm_loss_terms(raw_loss_terms)
 
-
         #Generator Step
         self.generator_optimizer.zero_grad(set_to_none=True)
         normed_loss_terms["aggreg"].backward()
         #clip gradients
-        grad_norm = nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0) #NOTE: max_norm hardcoded
-        self.generator_optimizer.step()
-        #TODO: could log grad_norm 
+        grad_norms = float(nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)) #NOTE: max_norm hardcoded
+        #Logging gradients 
+        self.grad_ems.update(grad_norms)
        
+        self.generator_optimizer.step()       
        #TODO: determin ideal strat for Classifier training. E.g. warmup + while <accuracy_thresh? every batch? etc. 
         #Classifier Step (supervised on Real Data)
         if self.should_train_classifier():
@@ -266,10 +274,10 @@ class Trainer():
     def norm_loss_terms(self, raw_terms):
         nt={}
         nt["recon"] = 0.7 * raw_terms["recon"] 
-        nt["integ"] = 0.25 * raw_terms["integ"]
-        nt["adv"] = 0.05 * raw_terms["adv"]     
+        nt["integ"] = raw_terms["integ"]
+        nt["adv"] = 0.005 * raw_terms["adv"]     
         nt["aggreg"] = sum(nt.values())
-        return raw_terms
+        return nt
 
 
 

@@ -41,13 +41,11 @@ def main():
     #Training
     LEARNING_RATE=0.001
     BATCH_SIZE=128
-    NUM_EPOCHS=10
+    NUM_EPOCHS=2
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=2
     #Model
     LATENT_DIM=128
-
-    
 
     #############################
     if RERUN_PREPROCESSOR:
@@ -79,8 +77,8 @@ def main():
    
 #    time.strftime('%H:%M:%S', time.gmtime(12345)) #TODO: easier formating??
     
-    print(f"[Time Spent Training - HHH.MM.SS]: {(train_time:= int(time.time() - t0_start_training))//3600:02d}|{(train_time%3600)//60:02d}|{train_time%60:02d} [Time Current]: {time.time():.2f}")
-    print(f"[Time Total]: {(time.time() - t0_start_main):.2f}, [Time Current]: {time.time():.2f}")
+    print(f"[Time Spent Training - HHH.MM.SS]: {(train_time:= int(time.time() - t0_start_training))//3600:02d}.{(train_time%3600)//60:02d}.{train_time%60:02d} [Time Current]: {time.time():.2f}")
+    print(f"[Time Total - HHH.MM.SS]: {(run_time:= int(time.time() - t0_start_main))//3600:02d}.{(run_time%3600)//60:02d}.{run_time%60:02d} [Time Current]: {time.time():.2f}")
 
 
 
