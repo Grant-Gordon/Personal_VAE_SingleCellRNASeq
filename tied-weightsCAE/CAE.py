@@ -45,7 +45,7 @@ class CAE(nn.Module):
         #recon_loss = nn.functional.mse_loss(expr_hat, expr, reduction="mean")
 
 
-        return expr_hat, h_tilde 
+        return expr_hat, h_tilde, os_list, ot_list
 
 
     

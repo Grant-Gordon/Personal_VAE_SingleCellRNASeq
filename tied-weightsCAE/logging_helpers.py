@@ -98,6 +98,17 @@ def per_chunk_grad_norms(writer, chunks_trained_on, grad_ems):
             'min': grad_ems.get_Min(),
             'max': grad_ems.get_Max(),
         }, chunks_trained_on)
+    
+#TODO: Make this a pyplot. 
+###################Gradient Logs #############################
+def log_metadata_influence(writer, metadata_ems):
+    for field, ems in metadata_ems:
+        writer.add_scalars(f"metadata_influence/{field}",{
+            'mean': metadata_ems.get_Mean(),
+            'min': metadata_ems.get_Min(),
+            'max': metadata_ems.get_Max()  
+            })
+        
 
 class Ems:
     def __init__(self, use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False):
@@ -120,11 +131,13 @@ class Ems:
             self.elements = []
 
     def update(self, val):
+        if val ==  None:
+            return
         
-        if self.use_max and (val > self.Max or self.Max == None):
+        if self.use_max and (self.Max == None or val > self.Max):
             self.Max =val
 
-        if self.use_min and (val < self.Min or self.Min == None):
+        if self.use_min and (self.Min == None or val < self.Min):
             self.Min = val
         
         if self.use_mean:

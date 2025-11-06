@@ -43,6 +43,7 @@ class Trainer():
         self.batch_prefetch_factor = batch_prefetch_factor
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tbwriter = log.init_logging()
+        self.log_metadata_influence=False
         
         #Load in JSONs
         with open (self.field_specs_path) as f:
@@ -61,7 +62,7 @@ class Trainer():
         #Model and Optimizer
         self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
         self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict).to(self.device)
-        self.generator_optimizer = optim.Adam(self.model.parameters(), lr = self.learning_rate)
+        self.generator_optimizer = optim.AdamW(self.model.parameters(), lr = self.learning_rate)
         self.classifier_optimizer = optim.Adam(self.classifier.parameters(), lr = self.learning_rate)
 
           
@@ -94,7 +95,11 @@ class Trainer():
             self.epoch_normed_loss_terms = defaultdict(float)
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
+            if epoch == num_epochs: 
+                self.log_metadata_influence=True
+                self.metadata_ems = {field: log.Ems() for field in self.model.used_fields}
             t0_epoch = time.time()  ###RESET LOGS
+            
             
             #loop chunks
             for expr_csr_chunk, meta_chunk in self.outer_loader:
@@ -162,6 +167,8 @@ class Trainer():
             log.per_epoch_normed_loss(self.tbwriter, epoch, dict(self.epoch_normed_loss_terms))
             if "classif" in self.epoch_raw_loss_terms:
                 log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
+        #FINISHED TRAINING 
+        log.log_metadata_influence(self.tbwriter, self.metadata_ems)
         self.tbwriter.close()
     
 
@@ -181,10 +188,22 @@ class Trainer():
             p.requires_grad_(True)
 
         #first_cycle
-        expr_hat_s_to_t, integration_term_1  = self.model(expr_batch, batch_s_context, batch_t_context)
+        expr_hat_s_to_t, integration_term_1, os_list, ot_list = self.model(expr_batch, batch_s_context, batch_t_context)
         
         #second_cycle
-        expr_hat_t_to_s, integration_term_2 = self.model(expr_hat_s_to_t, batch_t_context, batch_s_context)
+        expr_hat_t_to_s, integration_term_2, os_list, ot_list = self.model(expr_hat_s_to_t, batch_t_context, batch_s_context)
+        
+        #Log metadata infleucne
+        if self.log_metadata_influence:
+            for key in self.model.used_fields:
+                if key not in os_list or key not in ot_list or key not in self.metadata_ems:
+                    print(f"field \"{key}\" not found in either offset_lists or the metadata_ems")
+                    continue
+                self.metadata_ems[key].update(os_list[key])
+                self.metadata_ems[key].update(ot_list[key])
+        else:
+            os_list = None
+            ot_list = None
 
         #Gather Loss Terms 
         raw_loss_terms = {   
