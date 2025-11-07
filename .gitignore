@@ -59,3 +59,4 @@ Legacy/
 #local/personal/venv
 **/venv/
 **/.vscode/
+**/mv-dcgs.sh
