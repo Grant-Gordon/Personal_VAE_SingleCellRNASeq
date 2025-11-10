@@ -1,4 +1,4 @@
-#CAE.py
+#refactor_core.py
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -10,42 +10,53 @@ class CAE(nn.Module):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
         self.field_specs = field_specs
-        #Encoder
-        self.encoder = nn.Linear(input_dim, latent_dim, bias=False)
-
+        #Encoder- tied-weihghts for dec
+        self.base_encoder = nn.Linear(input_dim, latent_dim, bias=False)
+        #TODO: implement Moore-Penrose iterative updates of a He initialization 
         self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
 
-        #Metadata per-field-head
-        self.meta_heads = nn.ModuleDict()
+        #Field Shared Enc/Dex + per-context Heads
+        self.shared_meta_encoders = nn.ModuleDict()
+        self.shared_meta_decoders = nn.ModuleDict()
+        self.field_context_head_pool: Dict[nn.ModuelDict]
         for field in self.used_fields:
+            #shraed Enc/Dec's
             card = int(field_specs[field].get("cardinality", 0))
             assert card> 0, f"field: {field} must have cardinality greater than 0"
-            self.meta_heads[field] = nn.Linear(card, latent_dim, bias=False) #TODO: bias on metaheads?
-            print(f"Instantiated meta_head for field: {field}.")
-      
+            self.shared_meta_encoders[field] = nn.Linear(input_dim, latent_dim, bias=False) 
+            self.shared_meta_decoders[field] = nn.Linear(latent_dim, input_dim, bias=False) 
+            #Per-context FFN head.
+            for context in range(card):
+                self.field_context_head_pool[field][context] = nn.Linear(latent_dim, latent_dim, bias=False)
+            
+
+
+
     
-    def forward(self, expr:Tensor, source_context: Dict[str, Tensor], target_context:Dict[str, Tensor]) -> Tuple[Tensor, Tensor]:
-        h = self.encoder(expr)   #h = X W^TS
+    def forward(self, expr:Tensor, source_context: Dict[str, Tensor], target_context:Dict[str, Tensor]) -> Dict[str, Tensor]:
+        hidden_encodings = {} # Cache these for integration loss terms later 
+        head_logits = {} # Used to track the influence of heads Base & all fields 
 
+        #Base encoder. Simple X W^TW
+        hidden_encodings["base"] = self.base_encoder(expr)   #hx = X W^T
+        head_logits["base"] = torch.matmul(hidden_encodings["base"], self.encoder.weights) # (XW^T)W
 
-        # Sum per-field offsets
-        if self.used_fields:
-            os_list = [self.meta_heads[f](source_context[f]) for f in self.used_fields]  # each [B, latent_dim]
-            ot_list = [self.meta_heads[f](target_context[f]) for f in self.used_fields]
-            os = torch.stack(os_list, dim=0).sum(dim=0)  # [B, latent_dim]
-            ot = torch.stack(ot_list, dim=0).sum(dim=0)  # [B, latent_dim]
-        else:
-            os = torch.zeros_like(h)
-            ot = torch.zeros_like(h)
+        for field in self.used_fields:
+            #Enc With Source Metadata
+            shared_encoding = self.shared_meta_encoders[field](expr)
+            hidden_encodings[field] = self.field_context_head_pool[source_context[field]](shared_encoding) #h_field = X * C_shared_enc * Cs_FFN
 
-        h_tilde = torch.relu(h - os) # integration loss = first_cycle_(hg-os) - second_cycle(hg-os). Need to cache h - os
-        z = h_tilde + ot  # z = h - os + ot #TODO add RELU clipping to ensure nonneg
-
-        expr_hat = torch.matmul(z, self.encoder.weight) # X_hat = (h - os + ot)W
-        #recon_loss = nn.functional.mse_loss(expr_hat, expr, reduction="mean")
-
-
-        return expr_hat, h_tilde, os_list, ot_list
+            #Dec with Target Metadata
+            decoded_context =  self.field_context_head_pool[target_context[field]](hidden_encodings[field])
+            head_logits[field] = self.shared_meta_decoders[field](decoded_context) 
+        
+        #Combine Head Outputs and return 
+        X_st = sum(head_logits.values())
+        return {
+            "X_st": X_st,   #Trans genreated transcriptome from contest s->t
+            "hidden_encodings": hidden_encodings, #Cache hidden layers for integration loss later
+            "metadata_logits": head_logits #Cache Base + Metadata logits for tracking of metadata influence on final epoch
+        }
 
 
     
