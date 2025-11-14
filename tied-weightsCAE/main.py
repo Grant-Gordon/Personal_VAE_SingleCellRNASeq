@@ -10,7 +10,7 @@ def main():
     META_GLOB="human_metadata_*.pkl"
     EXPR_GLOB="human_counts_*.npz" 
     #Preprocessed metadata 
-    RERUN_PREPROCESSOR=True
+    RERUN_PREPROCESSOR=False
     PREPROCESSOR_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/Preprocessed_metadata"
     META_FIELDS_VOCABS_FILE_NAME="metadata_vocab.json"
     FIELD_SPECS_FILE_NAME="metadata_field_specs.json"
