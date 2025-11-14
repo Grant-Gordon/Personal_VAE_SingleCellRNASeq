@@ -97,7 +97,7 @@ class Trainer():
             self.chunk_num_in_epoch = 0
             if epoch == num_epochs: 
                 self.log_metadata_influence=True
-                self.metadata_ems = {field: log.Ems() for field in self.model.used_fields}
+                self.head_logit_ems = {field: log.Ems() for field in self.model.used_fields}
             t0_epoch = time.time()  ###RESET LOGS
             
             
@@ -168,7 +168,7 @@ class Trainer():
             if "classif" in self.epoch_raw_loss_terms:
                 log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
         #FINISHED TRAINING 
-        log.log_metadata_influence(self.tbwriter, self.metadata_ems)
+        log.log_metadata_influence(self.tbwriter, self.head_logit_ems)
         self.tbwriter.close()
     
 
@@ -191,12 +191,12 @@ class Trainer():
         st_cycle_out =  self.model(expr_batch, batch_s_context, batch_t_context)
         
         #second_cycle
-        ts_cycle_out = self.model(st_cycle_out["X_st"], batch_t_context, batch_s_context)
+        ts_cycle_out = self.model(st_cycle_out["X_st"], batch_t_context, batch_s_context) #Note ts_cycle_out["X_st"] is actually X_s -> t -> s
         
         #Log metadata infleucne
         if self.log_metadata_influence:
-            for head in ts_cycle_out["head_logits"]:
-                self.metadata_ems[head].update(ts_cycle_out["head_logits"][head]) #'base' or f'{field}' in fields_used
+            for head, logits in ts_cycle_out["head_logits"].items():
+                self.head_logit_ems[head].update(logits.detach()) #'base' or f'{field}' in fields_used
 
         #Gather Loss Terms 
         raw_loss_terms = {   
@@ -217,7 +217,13 @@ class Trainer():
         #Logging gradients 
         self.grad_ems.update(grad_norms)
        
-        self.generator_optimizer.step()       
+        self.generator_optimizer.step()
+        
+        #Enforce non-negative weights by ReLU the weights after updated
+        with torch.no_grad():
+            for param in self.model.parameters():
+                param.clamp_min_(0) #RELU
+                
        #TODO: determin ideal strat for Classifier training. E.g. warmup + while <accuracy_thresh? every batch? etc. 
         #Classifier Step (supervised on Real Data)
         if self.should_train_classifier():
@@ -240,34 +246,36 @@ class Trainer():
 
     def trans_gen_protocol(self, source_context):
         # Pick a field to change
-        field = random.choice(self.model.used_fields)
-        device = source_context[field].device
+        changed_fields = self.model.used_fields
+        for field in changed_fields:
+            device = source_context[field].device
 
-        # Clone all fields to avoid in-place edits on caller's tensors
-        target_context: Dict[str, Tensor] = {k: v.clone() for k, v in source_context.items()}
+            # Clone all fields to avoid in-place edits on caller's tensors
+            target_context: Dict[str, Tensor] = {k: v.clone() for k, v in source_context.items()}
 
-        t_as_idxs = {k: torch.argmax(target_context[k], dim =1)for k in self.model.used_fields} #Convert onehot to int-id's
+            t_as_idxs = {k: torch.argmax(target_context[k], dim =1)for k in self.model.used_fields} #Convert onehot to int-id's
 
-        # Cardinality and batch size
-        num_classes = int(self.field_specs_dict[field].get("cardinality", 0))
-        assert num_classes > 0, f"Field '{field}' must have positive cardinality"
+            # Cardinality and batch size
+            num_classes = int(self.field_specs_dict[field].get("cardinality", 0))
+            assert num_classes > 0, f"Field '{field}' must have positive cardinality"
 
-        batch_size = target_context[field].shape[0]
+            batch_size = target_context[field].shape[0]
 
-        # Current indices via argmax (works for valid one-hots; all-zero rows map to 0)
-        old_idx = target_context[field].argmax(dim=1)
+            # Current indices via argmax (works for valid one-hots; all-zero rows map to 0)
+            old_idx = target_context[field].argmax(dim=1)
 
-        # Sample a shift in [1, num_classes-1] so new != old, then wrap
-        shift = torch.randint(1, num_classes, (batch_size,), device=device)
-        new_idx = (old_idx + shift) % num_classes  # guaranteed different from old_idx
+            #TODO: don't neccessarily need to have new !=old, new can ==old. 
+            # Sample a shift in [1, num_classes-1] so new != old, then wrap
+            shift = torch.randint(1, num_classes, (batch_size,), device=device)
+            new_idx = (old_idx + shift) % num_classes  # guaranteed different from old_idx
 
-        # One-hot -> float32
-        target_context[field] = nn.functional.one_hot(new_idx, num_classes=num_classes).to(torch.float32)
-        t_as_idxs[field] = new_idx
-        changed_fields = [field]
+            # One-hot -> float32
+            target_context[field] = nn.functional.one_hot(new_idx, num_classes=num_classes).to(torch.float32)
+            t_as_idxs[field] = new_idx
 
         return target_context, changed_fields, t_as_idxs
-        
+    
+    #TODO: This is likely inverse. Ideally is target? Yes=low loss, No = high loss
     def get_adversarial_loss(self, x_st:Tensor,  t_as_idxs:Dict[str,Tensor], changed_fields =List[str])-> Tensor:
             self.classifier.to(self.device)
 
@@ -282,22 +290,16 @@ class Trainer():
             adv_loss = torch.stack(adv_terms).mean() if adv_terms else x_st.new_zeros(())
             return adv_loss
     
-    #TODO: average by field or use raw?
+    #TODO: average by field or use raw? Probably not, just do raw total for now. 
     def get_integration_loss(h1s:Dict[str, Tensor], h2s:Dict[str, Tensor]):
         total_integration_loss = 0.0
         for head in h1s:
             total_integration_loss += nn.functional.mse_loss(h1s[head], h2s[head])
         return total_integration_loss
     
-    #TODO: EMA (Exponental Moving Average)? 
+    #TODO:  
     def norm_loss_terms(self, raw_terms):
         return raw_terms
-        # nt={}
-        # nt["recon"] = 0.7 * raw_terms["recon"] 
-        # nt["integ"] = raw_terms["integ"]
-        # nt["adv"] = 0.005 * raw_terms["adv"]     
-        # nt["aggreg"] = sum(nt.values())
-        return nt
 
 
 
