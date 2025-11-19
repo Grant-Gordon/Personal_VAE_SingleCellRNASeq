@@ -69,18 +69,33 @@ class CAE(nn.Module):
             "head_logits": head_logits #Cache Base + Metadata logits for tracking of metadata influence on final epoch
         }
 
+
+    #TODO: Try columns not rows. (see if column scaling gives better init) 
     @staticmethod
     def _weight_init(module: nn.Module ):
         with torch.no_grad():
+            # #set weights to uniform dist
+            # W = module.weight
+            # W.uniform_(0.0, 1.0)
+            # #Sum rows (for denominator) calmped for divide-by-zero gaurd
+            # row_norms = torch.linalg.vector_norm(W, dim=1, keepdim=True).clamp_min(1e-12) #Dim = 1 for rows dim=0 for cols 
+            # #normalize Row In place by dividing by row_sums
+            # W.div_(row_norms)
+            # #DEBUG "Do all row L2s look like 1?"
+            # assert torch.allclose(torch.linalg.vector_norm(W, dim=1), torch.ones(W.size(0)), atol=1e-6)
+          
+            # W = shape (out_features, in_features)
+            #dim=1 -> norm across rows (in_features)
+            #dim=0 -> norm across cols (out_features)
             #set weights to uniform dist
             W = module.weight
             W.uniform_(0.0, 1.0)
-            #Sum rows (for denominator) calmped for divide-by-zero gaurd
-            row_norms = torch.linalg.vector_norm(W, dim=1, keepdim=True).clamp_min(1e-12) #Dim = 1 for rows dim=0 for cols 
+            # Column L2 norms (denominator), with guard against divide-by-zero
+            col_norms = torch.linalg.vector_norm(W, dim=0, keepdim=True).clamp_min(1e-12) #Dim = 1 for rows dim=0 for cols, #keepdim=True allows for broadcast on div
             #normalize Row In place by dividing by row_sums
-            W.div_(row_norms)
-            #DEBUG "Do all row L2s look like 1?"
-            assert torch.allclose(torch.linalg.vector_norm(W, dim=1), torch.ones(W.size(0)), atol=1e-6)
+            W.div_(col_norms)
+            #DEBUG "Do all Cols L2s look like 1?"
+            assert torch.allclose(torch.linalg.vector_norm(W, dim=0), torch.ones(W.size(1)), atol=1e-6)
 
     def _apply_heads_by_context(self, x: Tensor, context: Tensor, head_pool:nn.ModuleDict):
 

@@ -39,9 +39,9 @@ def main():
         PREPROCESSOR_ARGS+= ["--include", f]
 
     #Training
-    LEARNING_RATE=0.001
+    LEARNING_RATE=0.0001
     BATCH_SIZE=128
-    NUM_EPOCHS=5
+    NUM_EPOCHS=1
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=3
     #Model
