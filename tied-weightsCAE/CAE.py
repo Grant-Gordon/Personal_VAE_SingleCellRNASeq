@@ -84,19 +84,15 @@ class CAE(nn.Module):
 
     def _apply_heads_by_context(self, x: Tensor, context: Tensor, head_pool:nn.ModuleDict):
 
-        device = x.device
-
-        # Ensure 1D context: [batch]
-        context = context.view(-1).to(device)
+        context_ids = context.argmax(dim=1).to(device=x.device, dtype=torch.long)  # Convert one-hot to indices)
 
         # Get unique context IDs in this batch
-        unique_ctx = context.unique()
-
+        unique_ctx = context_ids.unique()
         out= None
 
         for context_val in unique_ctx:
             # Indices of samples with this context
-            idx = (context == context_val).nonzero(as_tuple=True)[0]
+            idx = (context_ids == context_val).nonzero(as_tuple=True)[0]
 
             #looup head
             key = str(int(context_val.item()))

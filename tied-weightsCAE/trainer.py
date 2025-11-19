@@ -44,6 +44,7 @@ class Trainer():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tbwriter = log.init_logging()
         self.log_metadata_influence=False
+        self.head_logit_l2_ems = None
         
         #Load in JSONs
         with open (self.field_specs_path) as f:
@@ -93,11 +94,12 @@ class Trainer():
             self.sum_chunk_train_times=0.0
             self.epoch_raw_loss_terms = defaultdict(float)
             self.epoch_normed_loss_terms = defaultdict(float)
+            self.epoch_raw_adv_field_loss = defaultdict(float)
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
-            if epoch == num_epochs: 
+            if epoch == num_epochs - 1: 
                 self.log_metadata_influence=True
-                self.head_logit_ems = {field: log.Ems() for field in self.model.used_fields}
+                self.head_logit_l2_ems = {field: log.Ems() for field in self.model.used_fields}
             t0_epoch = time.time()  ###RESET LOGS
             
             
@@ -109,6 +111,7 @@ class Trainer():
                 self.batch_num_in_chunk=0 ###RESET LOGS
                 self.sum_batch_train_times=0.0
                 self.chunk_raw_loss_terms = defaultdict(float)
+                self.chunk_raw_adv_field_loss = defaultdict(float)
                 self.chunk_normed_loss_terms = defaultdict(float)
                 self.grad_ems = log.Ems(use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False)
 
@@ -133,7 +136,7 @@ class Trainer():
                     meta_batches = {k: v.to(self.device, dtype=torch.float32, non_blocking=True)for k,v in meta_batches.items()}
                     
                     #Train Batch 
-                    batch_raw_loss_terms, batch_normed_loss_terms = self.train_on_batch(expr_batch, meta_batches)
+                    batch_raw_loss_terms, batch_normed_loss_terms, raw_adv_field_loss = self.train_on_batch(expr_batch, meta_batches)
                     #Compute Logs
                     self.sum_batch_train_times += time.time() - t0_batch
                     self.batch_num_in_chunk+=1
@@ -144,12 +147,14 @@ class Trainer():
                         if key not in batch_normed_loss_terms: continue
                         norm_v = batch_normed_loss_terms[key]
                         self.chunk_normed_loss_terms[key] += float(norm_v) if torch.is_tensor(norm_v) else float(norm_v)
+                    for field, loss in raw_adv_field_loss:
+                        self.chunk_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
                 log.per_chunk_raw_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_raw_loss_terms))
                 log.per_chunk_normed_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_normed_loss_terms))
                 log.per_chunk_grad_norms(self.tbwriter, self.chunks_trained_on, self.grad_ems)
-            
+                log.per_chunk_adv_field_loss(self.tbwriter, self.chunks_trained_on, self.chunk_raw_adv_field_loss,)
                 if "classif" in self.chunk_raw_loss_terms:
                     log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_raw_loss_terms["classif"]))
                 
@@ -160,15 +165,18 @@ class Trainer():
                     if key not in batch_normed_loss_terms: continue
                     norm_v = self.chunk_normed_loss_terms[key]
                     self.epoch_normed_loss_terms[key] += float(norm_v)
+                for field, loss in self.chunk_raw_adv_field_loss:
+                    self.epoch_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
 
                 self.sum_chunk_train_times += time.time() - t0_chunk
             #IN SCOPE EPOCH
             log.per_epoch_raw_loss(self.tbwriter, epoch, dict(self.epoch_raw_loss_terms))
             log.per_epoch_normed_loss(self.tbwriter, epoch, dict(self.epoch_normed_loss_terms))
+            log.per_epoch_raw_adv_field_loss(self.tbwriter, epoch, dict(self.epoch_raw_adv_field_loss))
             if "classif" in self.epoch_raw_loss_terms:
                 log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
         #FINISHED TRAINING 
-        log.log_metadata_influence(self.tbwriter, self.head_logit_ems)
+        log.log_metadata_influence(self.tbwriter, self.head_logit_l2_ems)
         self.tbwriter.close()
     
 
@@ -195,15 +203,17 @@ class Trainer():
         
         #Log metadata infleucne
         if self.log_metadata_influence:
-            for head, logits in ts_cycle_out["head_logits"].items():
-                self.head_logit_ems[head].update(logits.detach()) #'base' or f'{field}' in fields_used
+            with torch.no_grad():
+                for head, logits in ts_cycle_out["head_logits"].items():
+                    l2_batch= torch.linalg.vector_norm(logits, dim=1)
+                    self.head_logit_l2_ems[head].update(l2_batch) #'base' or f'{field}' in fields_used
 
         #Gather Loss Terms 
         raw_loss_terms = {   
             "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
             "integ": (raw_integration_loss := self.get_integration_loss(st_cycle_out["hidden_encodings"], ts_cycle_out["hidden_encodings"])),
-            "adv": (raw_adversarial_loss := self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)),
-            "aggreg": (raw_adversarial_loss + raw_recon_loss_final + raw_integration_loss),
+            "adv_mean": (raw_adv_field_loss_terms := self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)),
+            "aggreg": (raw_adv_field_loss_terms["field_mean"] + raw_recon_loss_final + raw_integration_loss),
             "classif": 0.0
         }
 
@@ -242,7 +252,7 @@ class Trainer():
             self.classifier_optimizer.step()
 
             raw_loss_terms["classif"] = float(loss_c.item())
-        return raw_loss_terms, normed_loss_terms
+        return raw_loss_terms, normed_loss_terms, raw_adv_field_loss_terms
 
     def trans_gen_protocol(self, source_context):
         # Pick a field to change
@@ -278,20 +288,20 @@ class Trainer():
     #TODO: This is likely inverse. Ideally is target? Yes=low loss, No = high loss
     def get_adversarial_loss(self, x_st:Tensor,  t_as_idxs:Dict[str,Tensor], changed_fields =List[str])-> Tensor:
             self.classifier.to(self.device)
-
-            with torch.no_grad():
-                for p in self.classifier.parameters():
-                    p.requires_grad_(False)
             self.classifier.eval()
+
+            for p in self.classifier.parameters():
+                p.requires_grad_(False)
+            
             logits_trans = self.classifier(x_st)
-            adv_terms = []
+            adv_terms = {}
             for f in changed_fields:
-                adv_terms.append(nn.functional.cross_entropy(logits_trans[f], t_as_idxs[f])) # CE adds -log to stop gradient explosion slightly better than SM(1-P(t))
-            adv_loss = torch.stack(adv_terms).mean() if adv_terms else x_st.new_zeros(())
-            return adv_loss
+                adv_terms[f] = nn.functional.cross_entropy(logits_trans[f], t_as_idxs[f]) # CE adds -log to stop gradient explosion slightly better than SM(1-P(t))
+            adv_terms["field_mean"] = torch.stack(val_list:=list(adv_terms.values())).mean() if val_list else x_st.new_zeros(())
+            return adv_terms
     
     #TODO: average by field or use raw? Probably not, just do raw total for now. 
-    def get_integration_loss(h1s:Dict[str, Tensor], h2s:Dict[str, Tensor]):
+    def get_integration_loss(self, h1s:Dict[str, Tensor], h2s:Dict[str, Tensor]):
         total_integration_loss = 0.0
         for head in h1s:
             total_integration_loss += nn.functional.mse_loss(h1s[head], h2s[head])

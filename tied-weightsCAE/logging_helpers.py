@@ -46,6 +46,29 @@ def per_chunk_normed_loss(
         'adv': chunk_loss_terms["adv"] 
     }, chunks_trained_on)
 
+def per_chunk_adv_field_loss(
+    writer: SummaryWriter,
+    chunk_index: int,
+    raw_adv_field_loss,
+) -> None:
+    """
+    Log all adversarial field losses together on a single multi-line plot for this chunk. 
+    """
+    scalars = {}
+    for field_name, value in raw_adv_field_loss.items():
+        if torch.is_tensor(value):
+            scalars[field_name] = float(value.detach().cpu())
+        else:
+            scalars[field_name] = float(value)
+
+    # One tag → many lines inside one plot
+    writer.add_scalars(
+        "loss/adv_fields_raw/chunk",  # Plot group
+        scalars,                      # {field_a: v, field_b: v, ...}
+        global_step=chunk_index
+    )
+
+
 
 def per_epoch_raw_loss(
         writer: SummaryWriter,
@@ -77,6 +100,27 @@ def per_epoch_normed_loss(
         'adv': epoch_loss_terms["adv"] 
     }, epoch)
 
+def per_epoch_raw_adv_field_loss(
+    writer: SummaryWriter,
+    epoch_index: int,
+    raw_adv_field_loss,
+) -> None:
+    """
+    Log all adversarial field losses together on a single multi-line plotfor this epoch.
+    """
+    scalars = {}
+    for field_name, value in raw_adv_field_loss.items():
+        if torch.is_tensor(value):
+            scalars[field_name] = float(value.detach().cpu())
+        else:
+            scalars[field_name] = float(value)
+
+    writer.add_scalars(
+        "loss/adv_fields_raw/epoch",
+        scalars,
+        global_step=epoch_index
+    )
+
 def per_chunk_classifier_loss(
         writer: SummaryWriter,
         chunks_trained_on: int,
@@ -102,13 +146,70 @@ def per_chunk_grad_norms(writer, chunks_trained_on, grad_ems):
 #TODO: Make this a pyplot. 
 ###################Gradient Logs #############################
 def log_metadata_influence(writer, metadata_ems):
-    for field, ems in metadata_ems:
-        writer.add_scalars(f"metadata_influence/{field}",{
-            'mean': metadata_ems.get_Mean(),
-            'min': metadata_ems.get_Min(),
-            'max': metadata_ems.get_Max()  
-            })
+    head_names = []
+    means = []
+    mins = []
+    maxs = []
+
+    for head, ems in metadata_ems:
+        head_names.append(head)
+
+        means.append(float(ems.get_Means()))
+        mins.append(float(ems.get_Min()))
+        maxs.append(float(ems.get_Max()))
+
+        means_arr = np.array(means, dtype=float)
+        mins_arr = np.array(mins, dtype=float)
+        maxs_arr = np.array(maxs, dtype=float)
         
+        num_heads = len(head_names)
+        x = np.arange(num_heads)
+        width = 0.25
+
+        fig, ax = plt.subplots(
+            figsize=(max(6.0, num_heads * 0.5), 4.0)
+        )
+        offset_idx = 0
+        legend_entries=[]
+
+        #Min
+        ax.bar(x + (offset_idx - 1) * width, mins_arr, width, label="min")
+        legend_entries.append("min")
+        offset_idx += 1
+
+        #Mean
+        ax.bar(x + (offset_idx - 1) * width, means_arr, width, label="mean")
+        legend_entries.append("mean")
+        offset_idx += 1
+
+        #Max
+        ax.bar(x + (offset_idx - 1) * width, maxs_arr, width, label="max")
+        legend_entries.append("max")
+        offset_idx += 1
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(head_names, rotation=45, ha="right")
+        ax.set_ylabel("L2 magnitude of metadata offset")
+        ax.set_title("Metadata head influence (L2 of C_t)")
+        ax.legend()
+        
+        fig.tight_layout()
+        writer.add_figure("metadata/head_influence_l2", fig, global_step=0)
+        plt.close(fig)
+
+          # Also log a simple text table for readability
+        lines = [
+            "| Head | Mean L2 | Min L2 | Max L2 |",
+            "|------|---------|--------|--------|",
+        ]
+        for head, mean_val, min_val, max_val in zip(head_names, means_arr, mins_arr, maxs_arr):
+            mean_str = f"{mean_val:.4f}" if np.isfinite(mean_val) else "NA"
+            min_str = f"{min_val:.4f}" if np.isfinite(min_val) else "NA"
+            max_str = f"{max_val:.4f}" if np.isfinite(max_val) else "NA"
+            lines.append(f"| {head} | {mean_str} | {min_str} | {max_str} |")
+
+        table_text = "\n".join(lines)
+        writer.add_text("metadata/head_influence_l2_stats", table_text, global_step=0)
 
 class Ems:
     def __init__(self, use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False):
