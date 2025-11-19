@@ -43,7 +43,7 @@ class Trainer():
         self.batch_prefetch_factor = batch_prefetch_factor
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tbwriter = log.init_logging()
-        self.log_metadata_influence=False
+        self.log_head_influence=False
         self.head_logit_l2_ems = None
         
         #Load in JSONs
@@ -89,7 +89,7 @@ class Trainer():
         self.chunks_trained_on = 0 
 
         for epoch in range(num_epochs):
-            print(f"Beggining epoch: {epoch} - Time: ~{time.time() - t0_train}")
+            print(f"\nBeggining epoch: {epoch} - Time: ~{time.time() - t0_train}")
             #Establish Epoch Logging
             self.sum_chunk_train_times=0.0
             self.epoch_raw_loss_terms = defaultdict(float)
@@ -98,8 +98,9 @@ class Trainer():
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
             if epoch == num_epochs - 1: 
-                self.log_metadata_influence=True
+                self.log_head_influence=True
                 self.head_logit_l2_ems = {field: log.Ems() for field in self.model.used_fields}
+                self.head_logit_l2_ems["base"] = log.Ems()
             t0_epoch = time.time()  ###RESET LOGS
             
             
@@ -114,7 +115,7 @@ class Trainer():
                 self.chunk_raw_adv_field_loss = defaultdict(float)
                 self.chunk_normed_loss_terms = defaultdict(float)
                 self.grad_ems = log.Ems(use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False)
-
+                print(f"\tTraining {self.chunk_num_in_epoch}th Chunk in Epoch: {epoch}")
                 t0_chunk = time.time()
 
                 #Create Datalaoder to prelaod batches from Chunk
@@ -176,7 +177,7 @@ class Trainer():
             if "classif" in self.epoch_raw_loss_terms:
                 log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
         #FINISHED TRAINING 
-        log.log_metadata_influence(self.tbwriter, self.head_logit_l2_ems)
+        log.log_metadata_influence(self.tbwriter, self.head_logit_l2_ems, global_step=epoch)
         self.tbwriter.close()
     
 
@@ -202,17 +203,19 @@ class Trainer():
         ts_cycle_out = self.model(st_cycle_out["X_st"], batch_t_context, batch_s_context) #Note ts_cycle_out["X_st"] is actually X_s -> t -> s
         
         #Log metadata infleucne
-        if self.log_metadata_influence:
+        if self.log_head_influence:
             with torch.no_grad():
                 for head, logits in ts_cycle_out["head_logits"].items():
                     l2_batch= torch.linalg.vector_norm(logits, dim=1)
-                    self.head_logit_l2_ems[head].update(l2_batch) #'base' or f'{field}' in fields_used
+                    l2_scalar= float(l2_batch.mean().item())
+                    self.head_logit_l2_ems[head].update(l2_scalar) #'base' or f'{field}' in fields_used
 
         #Gather Loss Terms 
+        raw_adv_field_loss_terms = self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)
         raw_loss_terms = {   
             "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
             "integ": (raw_integration_loss := self.get_integration_loss(st_cycle_out["hidden_encodings"], ts_cycle_out["hidden_encodings"])),
-            "adv_mean": (raw_adv_field_loss_terms := self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)),
+            "adv_mean": (raw_adv_field_loss_terms["field_mean"]),
             "aggreg": (raw_adv_field_loss_terms["field_mean"] + raw_recon_loss_final + raw_integration_loss),
             "classif": 0.0
         }
@@ -296,7 +299,8 @@ class Trainer():
             adv_terms = {}
             for f in changed_fields:
                 adv_terms[f] = nn.functional.cross_entropy(logits_trans[f], t_as_idxs[f]) # CE adds -log to stop gradient explosion slightly better than SM(1-P(t))
-            adv_terms["field_mean"] = torch.stack(val_list:=list(adv_terms.values())).mean() if val_list else x_st.new_zeros(())
+            val_list = list(adv_terms.values())
+            adv_terms["field_mean"] = torch.stack(val_list).mean() if val_list else x_st.new_zeros(())
             return adv_terms
     
     #TODO: average by field or use raw? Probably not, just do raw total for now. 

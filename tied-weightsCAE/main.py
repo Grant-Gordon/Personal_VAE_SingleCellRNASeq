@@ -41,7 +41,7 @@ def main():
     #Training
     LEARNING_RATE=0.001
     BATCH_SIZE=128
-    NUM_EPOCHS=2
+    NUM_EPOCHS=5
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=3
     #Model

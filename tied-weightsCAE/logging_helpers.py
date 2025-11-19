@@ -27,7 +27,7 @@ def per_chunk_raw_loss(
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
         'integ': chunk_loss_terms["integ"],
-        'adv': chunk_loss_terms["adv"] 
+        'adv': chunk_loss_terms["adv_mean"] 
     }, chunks_trained_on)
 
 
@@ -43,7 +43,7 @@ def per_chunk_normed_loss(
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
         'integ': chunk_loss_terms["integ"],
-        'adv': chunk_loss_terms["adv"] 
+        'adv': chunk_loss_terms["adv_mean"] 
     }, chunks_trained_on)
 
 def per_chunk_adv_field_loss(
@@ -82,7 +82,7 @@ def per_epoch_raw_loss(
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
         'integ': epoch_loss_terms["integ"],
-        'adv': epoch_loss_terms["adv"] 
+        'adv': epoch_loss_terms["adv_mean"] 
     }, epoch)
 
 def per_epoch_normed_loss(
@@ -97,7 +97,7 @@ def per_epoch_normed_loss(
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
         'integ': epoch_loss_terms["integ"],
-        'adv': epoch_loss_terms["adv"] 
+        'adv': epoch_loss_terms["adv_mean"] 
     }, epoch)
 
 def per_epoch_raw_adv_field_loss(
@@ -143,73 +143,105 @@ def per_chunk_grad_norms(writer, chunks_trained_on, grad_ems):
             'max': grad_ems.get_Max(),
         }, chunks_trained_on)
     
-#TODO: Make this a pyplot. 
 ###################Gradient Logs #############################
-def log_metadata_influence(writer, metadata_ems):
+def log_metadata_influence(
+    writer: Any,
+    metadata_ems: Dict[str, Any],
+    global_step= None,
+) -> None:
+    """
+    Log per-metadata-head influence statistics (min/mean/max L2) as a bar plot
+    and as a markdown table to TensorBoard.
+
+    Parameters
+    ----------
+    writer : SummaryWriter-like
+        TensorBoard writer with `add_figure` and `add_text` methods.
+    metadata_ems : Dict[str, Ems]
+        Mapping from head name to an Ems instance tracking L2 stats.
+    global_step : Optional[int]
+        Global step / epoch index for logging. If None, defaults to 0.
+    """
+    if global_step is None:
+        global_step = 0
+
     head_names = []
     means = []
     mins = []
     maxs = []
 
-    for head, ems in metadata_ems:
+    # Collect stats
+    for head, ems in metadata_ems.items():
         head_names.append(head)
 
-        means.append(float(ems.get_Means()))
-        mins.append(float(ems.get_Min()))
-        maxs.append(float(ems.get_Max()))
+        # Adjust these getters to match your actual Ems API
+        mean_val = getattr(ems, "Mean", None)
+        min_val = getattr(ems, "Min", None)
+        max_val = getattr(ems, "Max", None)
 
-        means_arr = np.array(means, dtype=float)
-        mins_arr = np.array(mins, dtype=float)
-        maxs_arr = np.array(maxs, dtype=float)
-        
-        num_heads = len(head_names)
-        x = np.arange(num_heads)
-        width = 0.25
+        # Convert None to NaN so numpy / plotting can handle it
+        mean_val = np.nan if mean_val is None else float(mean_val)
+        min_val = np.nan if min_val is None else float(min_val)
+        max_val = np.nan if max_val is None else float(max_val)
 
-        fig, ax = plt.subplots(
-            figsize=(max(6.0, num_heads * 0.5), 4.0)
-        )
-        offset_idx = 0
-        legend_entries=[]
+        means.append(mean_val)
+        mins.append(min_val)
+        maxs.append(max_val)
 
-        #Min
-        ax.bar(x + (offset_idx - 1) * width, mins_arr, width, label="min")
-        legend_entries.append("min")
-        offset_idx += 1
+    if not head_names:
+        # Nothing to log
+        return
 
-        #Mean
-        ax.bar(x + (offset_idx - 1) * width, means_arr, width, label="mean")
-        legend_entries.append("mean")
-        offset_idx += 1
+    means_arr = np.array(means, dtype=float)
+    mins_arr = np.array(mins, dtype=float)
+    maxs_arr = np.array(maxs, dtype=float)
 
-        #Max
-        ax.bar(x + (offset_idx - 1) * width, maxs_arr, width, label="max")
-        legend_entries.append("max")
-        offset_idx += 1
+    num_heads = len(head_names)
+    x = np.arange(num_heads)
+    width = 0.25
 
-        ax.set_xticks(x)
-        ax.set_xticklabels(head_names, rotation=45, ha="right")
-        ax.set_ylabel("L2 magnitude of metadata offset")
-        ax.set_title("Metadata head influence (L2 of C_t)")
-        ax.legend()
-        
-        fig.tight_layout()
-        writer.add_figure("metadata/head_influence_l2", fig, global_step=0)
-        plt.close(fig)
+    # Figure size scales with number of heads
+    fig, ax = plt.subplots(
+        figsize=(max(6.0, num_heads * 0.5), 4.0)
+    )
 
-          # Also log a simple text table for readability
-        lines = [
-            "| Head | Mean L2 | Min L2 | Max L2 |",
-            "|------|---------|--------|--------|",
-        ]
-        for head, mean_val, min_val, max_val in zip(head_names, means_arr, mins_arr, maxs_arr):
-            mean_str = f"{mean_val:.4f}" if np.isfinite(mean_val) else "NA"
-            min_str = f"{min_val:.4f}" if np.isfinite(min_val) else "NA"
-            max_str = f"{max_val:.4f}" if np.isfinite(max_val) else "NA"
-            lines.append(f"| {head} | {mean_str} | {min_str} | {max_str} |")
+    offset_idx = 0
 
-        table_text = "\n".join(lines)
-        writer.add_text("metadata/head_influence_l2_stats", table_text, global_step=0)
+    # Min
+    ax.bar(x + (offset_idx - 1) * width, mins_arr, width, label="min")
+    offset_idx += 1
+
+    # Mean
+    ax.bar(x + (offset_idx - 1) * width, means_arr, width, label="mean")
+    offset_idx += 1
+
+    # Max
+    ax.bar(x + (offset_idx - 1) * width, maxs_arr, width, label="max")
+    offset_idx += 1
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(head_names, rotation=45, ha="right")
+    ax.set_ylabel("L2 magnitude of metadata offset")
+    ax.set_title("Metadata head influence (L2 of C_t)")
+    ax.legend()
+
+    fig.tight_layout()
+    writer.add_figure("metadata/head_influence_l2", fig, global_step=global_step)
+    plt.close(fig)
+
+    # Also log a simple text table for readability
+    lines = [
+        "| Head | Mean L2 | Min L2 | Max L2 |",
+        "|------|---------|--------|--------|",
+    ]
+    for head, mean_val, min_val, max_val in zip(head_names, means_arr, mins_arr, maxs_arr):
+        mean_str = f"{mean_val:.4f}" if np.isfinite(mean_val) else "NA"
+        min_str = f"{min_val:.4f}" if np.isfinite(min_val) else "NA"
+        max_str = f"{max_val:.4f}" if np.isfinite(max_val) else "NA"
+        lines.append(f"| {head} | {mean_str} | {min_str} | {max_str} |")
+
+    table_text = "\n".join(lines)
+    writer.add_text("metadata/head_influence_l2_stats", table_text, global_step=global_step)
 
 class Ems:
     def __init__(self, use_max=True, use_min=True, use_mean=True, use_mode=False, use_median=False):
