@@ -147,7 +147,7 @@ class Trainer():
                         if key not in batch_normed_loss_terms: continue
                         norm_v = batch_normed_loss_terms[key]
                         self.chunk_normed_loss_terms[key] += float(norm_v) if torch.is_tensor(norm_v) else float(norm_v)
-                    for field, loss in raw_adv_field_loss:
+                    for field, loss in raw_adv_field_loss.items():
                         self.chunk_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
@@ -165,7 +165,7 @@ class Trainer():
                     if key not in batch_normed_loss_terms: continue
                     norm_v = self.chunk_normed_loss_terms[key]
                     self.epoch_normed_loss_terms[key] += float(norm_v)
-                for field, loss in self.chunk_raw_adv_field_loss:
+                for field, loss in self.chunk_raw_adv_field_loss.items():
                     self.epoch_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
 
                 self.sum_chunk_train_times += time.time() - t0_chunk
@@ -255,7 +255,7 @@ class Trainer():
         return raw_loss_terms, normed_loss_terms, raw_adv_field_loss_terms
 
     def trans_gen_protocol(self, source_context):
-        # Pick a field to change
+        #Curreng protocol: Randomly change each field
         changed_fields = self.model.used_fields
         for field in changed_fields:
             device = source_context[field].device
@@ -280,14 +280,13 @@ class Trainer():
             new_idx = (old_idx + shift) % num_classes  # guaranteed different from old_idx
 
             # One-hot -> float32
-            target_context[field] = nn.functional.one_hot(new_idx, num_classes=num_classes).to(torch.float32)
+            target_context[field] = nn.functional.one_hot(new_idx, num_classes=num_classes).to(device=self.device, dtype=torch.float32)
             t_as_idxs[field] = new_idx
 
         return target_context, changed_fields, t_as_idxs
     
     #TODO: This is likely inverse. Ideally is target? Yes=low loss, No = high loss
     def get_adversarial_loss(self, x_st:Tensor,  t_as_idxs:Dict[str,Tensor], changed_fields =List[str])-> Tensor:
-            self.classifier.to(self.device)
             self.classifier.eval()
 
             for p in self.classifier.parameters():
