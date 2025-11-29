@@ -17,6 +17,7 @@ import logging_helpers as log
 
 class Trainer():
     def __init__(self,
+                output_dir,
                 data_dir="/mnt/projects/debruinz_project/july2024_census_data/subset",
                 expr_glob="human_counts_?.npz", #NOTE: Glob uses ? not * for hyphenated training
                 meta_glob="human_metadata_?.pkl", #NOTE: Glob uses ? not * for hyphenated training
@@ -30,6 +31,7 @@ class Trainer():
                 batch_prefetch_factor=1
                 ):
         t0_init = time.time()
+        self.output_dir=output_dir
         self.data_dir= data_dir
         self.expr_glob = expr_glob
         self.meta_glob = meta_glob
@@ -42,7 +44,7 @@ class Trainer():
         self.batch_workers = batch_workers
         self.batch_prefetch_factor = batch_prefetch_factor
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tbwriter = log.init_logging()
+        self.tbwriter = log.init_logging(self.output_dir)
         self.log_head_influence=False
         self.head_logit_l2_ems = None
         
@@ -226,7 +228,7 @@ class Trainer():
         self.generator_optimizer.zero_grad(set_to_none=True)
         normed_loss_terms["aggreg"].backward()
         #clip gradients
-        grad_norms = float(nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)) #NOTE: max_norm hardcoded
+        grad_norms = float(nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)) #NOTE: max_norm hardcoded
         #Logging gradients 
         self.grad_ems.update(grad_norms)
        

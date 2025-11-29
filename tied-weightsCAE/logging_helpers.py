@@ -8,11 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-TB_OUTPUT_PATH = "/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/job-outputs"
 
-def init_logging():
-    os.makedirs(TB_OUTPUT_PATH, exist_ok=True)
-    writer = SummaryWriter(log_dir=os.path.join(TB_OUTPUT_PATH, "tensorboard_logs"))
+def init_logging(output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=os.path.join(output_dir, "tensorboard_logs"))
     return writer 
 ##################LOSS LOGS############################
 def per_chunk_raw_loss(
@@ -175,9 +174,9 @@ def log_metadata_influence(
         head_names.append(head)
 
         # Adjust these getters to match your actual Ems API
-        mean_val = getattr(ems, "Mean", None)
-        min_val = getattr(ems, "Min", None)
-        max_val = getattr(ems, "Max", None)
+        mean_val = ems.get_Mean()
+        min_val = ems.get_Min()
+        max_val = ems.get_Max()
 
         # Convert None to NaN so numpy / plotting can handle it
         mean_val = np.nan if mean_val is None else float(mean_val)

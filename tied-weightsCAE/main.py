@@ -1,11 +1,21 @@
 from trainer import Trainer
 import metadata_preprocessor
 import time
+import argparse
 
-def main():
+
+def main(raw_args=None):
     t0_start_main = time.time()
     #############################
+    #Get Job_dir/output_dir from slurm submission script
+    parser = argparse.ArgumentParser(description="Parser to take in Output_dir from surm_submission scripts")
+    parser.add_argument("--output-dir", required=True, help="Output directory for: logs, *.err, *.out, tensorboard, etc.")
+    args = parser.parse_args(raw_args)
+
+
+    #############################
     #Data
+    OUTPUT_DIR=args.output_dir
     DATA_DIR="/mnt/projects/debruinz_project/july2024_census_data/subset"
     META_GLOB="human_metadata_*.pkl"
     EXPR_GLOB="human_counts_*.npz" 
@@ -41,7 +51,7 @@ def main():
     #Training
     LEARNING_RATE=0.0001
     BATCH_SIZE=128
-    NUM_EPOCHS=1
+    NUM_EPOCHS=7
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=3
     #Model
@@ -59,6 +69,7 @@ def main():
         print(f"Metdata preprocessor was not used. \n\t Using preprocessed JSONS at:\n\t - {FIELD_SPECS_PATH}\n\t - {META_FIELDS_VOCABS_PATH}")
 
     trainer = Trainer(
+        output_dir=OUTPUT_DIR,
         data_dir=DATA_DIR,
         expr_glob=EXPR_GLOB,
         meta_glob=META_GLOB,
