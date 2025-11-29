@@ -14,6 +14,7 @@ from collections import defaultdict
 import json
 import logging_helpers as log
 
+METADATA_ENABLED=False
 
 class Trainer():
     def __init__(self,
@@ -48,12 +49,13 @@ class Trainer():
         self.log_head_influence=False
         self.head_logit_l2_ems = None
         
-        #Load in JSONs
-        with open (self.field_specs_path) as f:
-            self.field_specs_dict = json.load(f)
-        with open(meta_fields_vocabs_path) as f:
-            self.metadata_fields_vocabs = json.load(f)
-        print(f"Successfully loaded metadata JSON files - Inside Trainer.__init__()")
+        if METADATA_ENABLED:
+            #Load in JSONs
+            with open (self.field_specs_path) as f:
+                self.field_specs_dict = json.load(f)
+            with open(meta_fields_vocabs_path) as f:
+                self.metadata_fields_vocabs = json.load(f)
+            print(f"Successfully loaded metadata JSON files - Inside Trainer.__init__()")
 
         #Dataloader for Chunks 
         chunks_dataset = ChunksDataset(self.data_dir, meta_glob_pattern=self.meta_glob, gene_expr_glob_pattern=self.expr_glob)
@@ -64,9 +66,11 @@ class Trainer():
 
         #Model and Optimizer
         self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
-        self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict).to(self.device)
         self.generator_optimizer = optim.AdamW(self.model.parameters(), lr = self.learning_rate)
-        self.classifier_optimizer = optim.Adam(self.classifier.parameters(), lr = self.learning_rate)
+        
+        if METADATA_ENABLED:
+            self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict).to(self.device)
+            self.classifier_optimizer = optim.Adam(self.classifier.parameters(), lr = self.learning_rate)
 
           
         self.outer_loader = DataLoader(
@@ -96,12 +100,12 @@ class Trainer():
             self.sum_chunk_train_times=0.0
             self.epoch_raw_loss_terms = defaultdict(float)
             self.epoch_normed_loss_terms = defaultdict(float)
-            self.epoch_raw_adv_field_loss = defaultdict(float)
+            if METADATA_ENABLED: self.epoch_raw_adv_field_loss = defaultdict(float)
             self.epoch_classifier_loss = 0.0
             self.chunk_num_in_epoch = 0
             if epoch == num_epochs - 1: 
                 self.log_head_influence=True
-                self.head_logit_l2_ems = {field: log.Ems() for field in self.model.used_fields}
+                if METADATA_ENABLED: self.head_logit_l2_ems = {field: log.Ems() for field in self.model.used_fields}
                 self.head_logit_l2_ems["base"] = log.Ems()
             t0_epoch = time.time()  ###RESET LOGS
             
@@ -157,7 +161,7 @@ class Trainer():
                 log.per_chunk_raw_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_raw_loss_terms))
                 log.per_chunk_normed_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_normed_loss_terms))
                 log.per_chunk_grad_norms(self.tbwriter, self.chunks_trained_on, self.grad_ems)
-                log.per_chunk_adv_field_loss(self.tbwriter, self.chunks_trained_on, self.chunk_raw_adv_field_loss,)
+                if METADATA_ENABLED: log.per_chunk_adv_field_loss(self.tbwriter, self.chunks_trained_on, self.chunk_raw_adv_field_loss,)
                 if "classif" in self.chunk_raw_loss_terms:
                     log.per_chunk_classifier_loss(self.tbwriter,self.chunks_trained_on, float(self.chunk_raw_loss_terms["classif"]))
                 
@@ -168,18 +172,19 @@ class Trainer():
                     if key not in batch_normed_loss_terms: continue
                     norm_v = self.chunk_normed_loss_terms[key]
                     self.epoch_normed_loss_terms[key] += float(norm_v)
-                for field, loss in self.chunk_raw_adv_field_loss.items():
-                    self.epoch_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
+                if METADATA_ENABLED:
+                    for field, loss in self.chunk_raw_adv_field_loss.items():
+                        self.epoch_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
 
                 self.sum_chunk_train_times += time.time() - t0_chunk
             #IN SCOPE EPOCH
             log.per_epoch_raw_loss(self.tbwriter, epoch, dict(self.epoch_raw_loss_terms))
             log.per_epoch_normed_loss(self.tbwriter, epoch, dict(self.epoch_normed_loss_terms))
-            log.per_epoch_raw_adv_field_loss(self.tbwriter, epoch, dict(self.epoch_raw_adv_field_loss))
+            if METADATA_ENABLED: log.per_epoch_raw_adv_field_loss(self.tbwriter, epoch, dict(self.epoch_raw_adv_field_loss))
             if "classif" in self.epoch_raw_loss_terms:
                 log.per_epoch_classifier_loss(self.tbwriter, epoch, float(self.epoch_raw_loss_terms["classif"]))
         #FINISHED TRAINING 
-        log.log_metadata_influence(self.tbwriter, self.head_logit_l2_ems, global_step=epoch)
+        if METADATA_ENABLED: log.log_metadata_influence(self.tbwriter, self.head_logit_l2_ems, global_step=epoch)
         self.tbwriter.close()
     
 
@@ -187,16 +192,20 @@ class Trainer():
         #current_batchs_size = expr_batch.size()[0] #TODO: Should be 0 or 1???
 
         #Establish Metadata Contexts
-        batch_s_context = {f: meta_batches[f] for f in self.model.used_fields}
-        batch_t_context, changed_fields, t_as_idxs = self.trans_gen_protocol(batch_s_context)
-
-        #Protect against Frozen Classifier
-        self.classifier.eval()
-        for p in self.classifier.parameters():
-            p.requires_grad_(False)
-        self.model.train()
-        for p in self.model.parameters():
-            p.requires_grad_(True)
+        if METADATA_ENABLED: 
+            batch_s_context = {f: meta_batches[f] for f in self.model.used_fields}
+            batch_t_context, changed_fields, t_as_idxs = self.trans_gen_protocol(batch_s_context)
+        else:
+            batch_s_context = None
+            batch_t_context =None
+        if METADATA_ENABLED:
+            #Protect against Frozen Classifier
+            self.classifier.eval()
+            for p in self.classifier.parameters():
+                p.requires_grad_(False)
+            self.model.train()
+            for p in self.model.parameters():
+                p.requires_grad_(True)
 
         #first_cycle
         st_cycle_out =  self.model(expr_batch, batch_s_context, batch_t_context)
@@ -213,14 +222,20 @@ class Trainer():
                     self.head_logit_l2_ems[head].update(l2_scalar) #'base' or f'{field}' in fields_used
 
         #Gather Loss Terms 
-        raw_adv_field_loss_terms = self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)
-        raw_loss_terms = {   
-            "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
-            "integ": (raw_integration_loss := self.get_integration_loss(st_cycle_out["hidden_encodings"], ts_cycle_out["hidden_encodings"])),
-            "adv_mean": (raw_adv_field_loss_terms["field_mean"]),
-            "aggreg": (raw_adv_field_loss_terms["field_mean"] + raw_recon_loss_final + raw_integration_loss),
-            "classif": 0.0
-        }
+        if METADATA_ENABLED:
+            raw_adv_field_loss_terms = self.get_adversarial_loss(st_cycle_out["X_st"], t_as_idxs, changed_fields)
+            raw_loss_terms = {   
+                "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
+                "integ": (raw_integration_loss := self.get_integration_loss(st_cycle_out["hidden_encodings"], ts_cycle_out["hidden_encodings"])),
+                "adv_mean": (raw_adv_field_loss_terms["field_mean"]),
+                "aggreg": (raw_adv_field_loss_terms["field_mean"] + raw_recon_loss_final + raw_integration_loss),
+                "classif": 0.0
+            }
+        else: 
+             raw_adv_field_loss_terms = None
+             raw_loss_terms = {   
+                "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
+             }
 
         normed_loss_terms = self.norm_loss_terms(raw_loss_terms)
 
@@ -238,25 +253,25 @@ class Trainer():
         with torch.no_grad():
             for param in self.model.parameters():
                 param.clamp_min_(0) #RELU
+
+        if METADATA_ENABLED: 
+            #Classifier Step (supervised on Real Data)
+            if self.should_train_classifier():
+                self.classifier.train()
+                for p in self.classifier.parameters():
+                    p.requires_grad_(True)
+
+                logits_real = self.classifier(expr_batch.detach())
+                s_as_idx = {f: torch.argmax(batch_s_context[f], dim=1).to(self.device, non_blocking=True).long() for f in self.model.used_fields} #conver onehot to int-idx for cross-entropy [0,0,1,0] -> 2, CE(logits, 2)
+                classif_loss_term = [nn.functional.cross_entropy(logits_real[f], s_as_idx[f]) for f in self.model.used_fields]
+                loss_c = torch.stack(classif_loss_term).mean()
+
                 
-       #TODO: determin ideal strat for Classifier training. E.g. warmup + while <accuracy_thresh? every batch? etc. 
-        #Classifier Step (supervised on Real Data)
-        if self.should_train_classifier():
-            self.classifier.train()
-            for p in self.classifier.parameters():
-                p.requires_grad_(True)
+                self.classifier_optimizer.zero_grad(set_to_none=True)
+                loss_c.backward()
+                self.classifier_optimizer.step()
 
-            logits_real = self.classifier(expr_batch.detach())
-            s_as_idx = {f: torch.argmax(batch_s_context[f], dim=1).to(self.device, non_blocking=True).long() for f in self.model.used_fields} #conver onehot to int-idx for cross-entropy [0,0,1,0] -> 2, CE(logits, 2)
-            classif_loss_term = [nn.functional.cross_entropy(logits_real[f], s_as_idx[f]) for f in self.model.used_fields]
-            loss_c = torch.stack(classif_loss_term).mean()
-
-            
-            self.classifier_optimizer.zero_grad(set_to_none=True)
-            loss_c.backward()
-            self.classifier_optimizer.step()
-
-            raw_loss_terms["classif"] = float(loss_c.item())
+                raw_loss_terms["classif"] = float(loss_c.item())
         return raw_loss_terms, normed_loss_terms, raw_adv_field_loss_terms
 
     def trans_gen_protocol(self, source_context):

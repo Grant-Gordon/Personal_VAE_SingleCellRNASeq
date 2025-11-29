@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from typing import Dict, Tuple
+METADATA_ENABLED = False
 
 class CAE(nn.Module):
     def __init__(self, input_dim:int, latent_dim:int, field_specs:Dict[str, Dict[str, int]]):
@@ -15,31 +16,33 @@ class CAE(nn.Module):
         #TODO: implement Moore-Penrose iterative updates of a He initialization 
         self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
 
-        #Field Shared Enc/Dex + per-context Heads
-        self.shared_meta_encoders = nn.ModuleDict()
-        self.shared_meta_decoders = nn.ModuleDict()
-        self.field_context_head_pool = nn.ModuleDict()
-        for field in self.used_fields:
-            #shraed Enc/Dec's
-            card = int(field_specs[field].get("cardinality", 0))
-            assert card> 0, f"field: {field} must have cardinality greater than 0"
-            self.shared_meta_encoders[field] = nn.Linear(input_dim, latent_dim, bias=False) 
-            self.shared_meta_decoders[field] = nn.Linear(latent_dim, input_dim, bias=False) 
-           
-            #Per-context FFN head.
-            self.field_context_head_pool[field] = nn.ModuleDict()
-            for context in range(card):
-                self.field_context_head_pool[field][str(context)] = nn.Linear(latent_dim, latent_dim, bias=False)
-        
+        if METADATA_ENABLED:
+            #Field Shared Enc/Dex + per-context Heads
+            self.shared_meta_encoders = nn.ModuleDict()
+            self.shared_meta_decoders = nn.ModuleDict()
+            self.field_context_head_pool = nn.ModuleDict()
+            for field in self.used_fields:
+                #shraed Enc/Dec's
+                card = int(field_specs[field].get("cardinality", 0))
+                assert card> 0, f"field: {field} must have cardinality greater than 0"
+                self.shared_meta_encoders[field] = nn.Linear(input_dim, latent_dim, bias=False) 
+                self.shared_meta_decoders[field] = nn.Linear(latent_dim, input_dim, bias=False) 
+            
+                #Per-context FFN head.
+                self.field_context_head_pool[field] = nn.ModuleDict()
+                for context in range(card):
+                    self.field_context_head_pool[field][str(context)] = nn.Linear(latent_dim, latent_dim, bias=False)
+            
         #init weights for all heads
         CAE._weight_init(self.base_encoder)
-        for head in self.shared_meta_encoders.values():
-            CAE._weight_init(head)
-        for head in self.shared_meta_decoders.values():
-            CAE._weight_init(head)
-        for field_pool in self.field_context_head_pool.values():
-            for context_head in field_pool.values():
-                CAE._weight_init(context_head)
+        if METADATA_ENABLED:
+            for head in self.shared_meta_encoders.values():
+                CAE._weight_init(head)
+            for head in self.shared_meta_decoders.values():
+                CAE._weight_init(head)
+            for field_pool in self.field_context_head_pool.values():
+                for context_head in field_pool.values():
+                    CAE._weight_init(context_head)
 
 
 
@@ -51,16 +54,16 @@ class CAE(nn.Module):
         #Base encoder. Simple X W^TW
         hidden_encodings["base"] = self.base_encoder(expr)   #hx = X W^T
         head_logits["base"] = torch.matmul(hidden_encodings["base"], self.base_encoder.weight) # (XW^T)W
+        if METADATA_ENABLED:
+            for field in self.used_fields:
+                #Enc With Source Metadata
+                shared_encoding = self.shared_meta_encoders[field](expr)
+                hidden_encodings[field] = self._apply_heads_by_context(x=shared_encoding, context=source_context[field], head_pool=self.field_context_head_pool[field]) #h_field = X * C_shared_enc * Cs_FFN
 
-        for field in self.used_fields:
-            #Enc With Source Metadata
-            shared_encoding = self.shared_meta_encoders[field](expr)
-            hidden_encodings[field] = self._apply_heads_by_context(x=shared_encoding, context=source_context[field], head_pool=self.field_context_head_pool[field]) #h_field = X * C_shared_enc * Cs_FFN
-
-            #Dec with Target Metadata
-            decoded_context =  self._apply_heads_by_context(x=hidden_encodings[field], context=target_context[field], head_pool=self.field_context_head_pool[field])
-            head_logits[field] = self.shared_meta_decoders[field](decoded_context) 
-        
+                #Dec with Target Metadata
+                decoded_context =  self._apply_heads_by_context(x=hidden_encodings[field], context=target_context[field], head_pool=self.field_context_head_pool[field])
+                head_logits[field] = self.shared_meta_decoders[field](decoded_context) 
+            
         #Combine Head Outputs and return 
         X_st = torch.stack(list(head_logits.values()), dim=0,).sum(dim=0)
         return {

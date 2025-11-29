@@ -28,14 +28,14 @@ def main(raw_args=None):
     FIELD_SPECS_PATH=f"{PREPROCESSOR_DIR}/{FIELD_SPECS_FILE_NAME}"      #[ FieldSpec(field=..., cardinality=..., using=..., non_null_fraction=...), ... ]
     INCLUDE_FIELDS=[
         "cell_type",
-        "disease",
-        "development_stage",
-        "dev_stage",
-        "sex",
-        "self_reported_ethnicity",
-        "tissue_general",
-        "tissue",
-        "assay"
+        # "disease",
+        # "development_stage",
+        # "dev_stage",
+        # "sex",
+        # "self_reported_ethnicity",
+        # "tissue_general",
+        # "tissue",
+        # "assay"
     ]
     PREPROCESSOR_ARGS=[
         '--data-dir', f'{DATA_DIR}',
@@ -51,7 +51,7 @@ def main(raw_args=None):
     #Training
     LEARNING_RATE=0.0001
     BATCH_SIZE=128
-    NUM_EPOCHS=7
+    NUM_EPOCHS=1
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=3
     #Model
