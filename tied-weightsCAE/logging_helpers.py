@@ -25,7 +25,7 @@ def per_chunk_raw_loss(
     writer.add_scalars(f"loss_raw/chunk_raw_loss", {
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
-        'integ': chunk_loss_terms["integ"],
+        'integ': chunk_loss_terms["integ"],#TODO: COMMENTED OUT FOR DEBUG ONLY
         'adv': chunk_loss_terms["adv_mean"] 
     }, chunks_trained_on)
 
@@ -41,7 +41,7 @@ def per_chunk_normed_loss(
     writer.add_scalars(f"loss_normed/chunk_raw_loss", {
         'total': chunk_loss_terms["aggreg"],
         'recon': chunk_loss_terms["recon"],
-        'integ': chunk_loss_terms["integ"],
+        'integ': chunk_loss_terms["integ"], #TODO: COMMENTED OUT FOR DEBUG ONLY
         'adv': chunk_loss_terms["adv_mean"] 
     }, chunks_trained_on)
 
@@ -80,7 +80,7 @@ def per_epoch_raw_loss(
     writer.add_scalars(f"loss_raw/epoch_loss", {
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
-        'integ': epoch_loss_terms["integ"],
+        'integ': epoch_loss_terms["integ"],#TODO: COMMENTED OUT FOR DEBUG ONLY
         'adv': epoch_loss_terms["adv_mean"] 
     }, epoch)
 
@@ -95,7 +95,7 @@ def per_epoch_normed_loss(
     writer.add_scalars(f"loss_normed/epoch_loss", {
         'total': epoch_loss_terms["aggreg"],
         'recon': epoch_loss_terms["recon"],
-        'integ': epoch_loss_terms["integ"],
+        'integ': epoch_loss_terms["integ"], #TODO: COMMENTED OUT FOR DEBUG ONLY
         'adv': epoch_loss_terms["adv_mean"] 
     }, epoch)
 

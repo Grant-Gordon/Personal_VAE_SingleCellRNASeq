@@ -22,20 +22,20 @@ def main(raw_args=None):
     #Preprocessed metadata 
     RERUN_PREPROCESSOR=False
     PREPROCESSOR_DIR="/mnt/projects/debruinz_project/grant_gordon/Personal_VAE_SingleCellRNASeq/tied-weightsCAE/Preprocessed_metadata"
-    META_FIELDS_VOCABS_FILE_NAME="metadata_vocab.json"
-    FIELD_SPECS_FILE_NAME="metadata_field_specs.json"
+    META_FIELDS_VOCABS_FILE_NAME="metadata_vocab_default_9.json"
+    FIELD_SPECS_FILE_NAME="metadata_field_specs_default_9.json"
     META_FIELDS_VOCABS_PATH=f"{PREPROCESSOR_DIR}/{META_FIELDS_VOCABS_FILE_NAME}"  # { field_name: { value: idx, ... }, ... }   
     FIELD_SPECS_PATH=f"{PREPROCESSOR_DIR}/{FIELD_SPECS_FILE_NAME}"      #[ FieldSpec(field=..., cardinality=..., using=..., non_null_fraction=...), ... ]
     INCLUDE_FIELDS=[
         "cell_type",
-        # "disease",
-        # "development_stage",
-        # "dev_stage",
-        # "sex",
-        # "self_reported_ethnicity",
-        # "tissue_general",
-        # "tissue",
-        # "assay"
+        "disease",
+        "development_stage",
+        "dev_stage",
+        "sex",
+        "self_reported_ethnicity",
+        "tissue_general",
+        "tissue",
+        "assay"
     ]
     PREPROCESSOR_ARGS=[
         '--data-dir', f'{DATA_DIR}',
@@ -51,7 +51,7 @@ def main(raw_args=None):
     #Training
     LEARNING_RATE=0.0001
     BATCH_SIZE=128
-    NUM_EPOCHS=1
+    NUM_EPOCHS=10
     BATCH_WORKERS=2
     BATCH_PREFETCH_FACTOR=3
     #Model

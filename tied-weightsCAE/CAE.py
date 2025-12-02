@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from typing import Dict, Tuple
-METADATA_ENABLED = False
+METADATA_ENABLED = True
 
 class CAE(nn.Module):
     def __init__(self, input_dim:int, latent_dim:int, field_specs:Dict[str, Dict[str, int]]):
@@ -14,7 +14,10 @@ class CAE(nn.Module):
         #Encoder- tied-weihghts for dec
         self.base_encoder = nn.Linear(input_dim, latent_dim, bias=False)
         #TODO: implement Moore-Penrose iterative updates of a He initialization 
-        self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
+        if METADATA_ENABLED:
+            self.used_fields = [f for f, spec in field_specs.items() if spec.get("using", False)]
+        else:
+            self.used_fields=None
 
         if METADATA_ENABLED:
             #Field Shared Enc/Dex + per-context Heads
@@ -62,7 +65,7 @@ class CAE(nn.Module):
 
                 #Dec with Target Metadata
                 decoded_context =  self._apply_heads_by_context(x=hidden_encodings[field], context=target_context[field], head_pool=self.field_context_head_pool[field])
-                head_logits[field] = self.shared_meta_decoders[field](decoded_context) 
+                head_logits[field] = self.shared_meta_decoders[field](decoded_context) * 0.0159 #NOTE: constant so that X_st ~= 2 *base_dec + 1(total_field_dec). (prelimary runs showed each meta_head_dec was ~3.5X base_dec)
             
         #Combine Head Outputs and return 
         X_st = torch.stack(list(head_logits.values()), dim=0,).sum(dim=0)

@@ -40,23 +40,23 @@ class ChunksDataset(Dataset):
 
 #iny dataloaders 
 class SingleChunkDataset(Dataset):
-    def __init__(self, chunk, field_specs, field_value_map):
-        
+    def __init__(self, chunk, field_specs, used_fields, field_value_map):
+        self.field_specs = field_specs
+        self.used_fields = used_fields        
         self.gene_expr_csr = chunk[0]
         self.samples_in_chunk = self.gene_expr_csr.shape[0]
         
         self. meta = chunk[1]
-        self.field_specs = field_specs
         self.field_value_map = field_value_map
 
-        self.used_fields = [f for f, spec in self.field_specs.items() if spec.get("using", False)] #TODO: Don't need to recompute for every chunk, fields will be the same every time 
 
     def __getitem__(self, index):
         row = self.gene_expr_csr[index]
         expr = torch.tensor(row.toarray().flatten(), dtype=torch.float32)
         
         meta_row=self.meta.iloc[index]
-        meta_onehots = self.meta_raw_to_onehot(meta_row)
+        meta_onehots = self.meta_raw_to_onehot(meta_row) 
+        # meta_onehots = {} #NOTE: USED FOR DEBUG ONLY 
       
         return expr, meta_onehots
 

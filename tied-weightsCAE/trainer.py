@@ -14,7 +14,7 @@ from collections import defaultdict
 import json
 import logging_helpers as log
 
-METADATA_ENABLED=False
+METADATA_ENABLED=True
 
 class Trainer():
     def __init__(self,
@@ -47,7 +47,7 @@ class Trainer():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tbwriter = log.init_logging(self.output_dir)
         self.log_head_influence=False
-        self.head_logit_l2_ems = None
+        self.head_logit_l2_ems = {}
         
         if METADATA_ENABLED:
             #Load in JSONs
@@ -56,6 +56,10 @@ class Trainer():
             with open(meta_fields_vocabs_path) as f:
                 self.metadata_fields_vocabs = json.load(f)
             print(f"Successfully loaded metadata JSON files - Inside Trainer.__init__()")
+        else:
+            self.field_specs_dict=None
+            self.metadata_fields_vocabs = None
+
 
         #Dataloader for Chunks 
         chunks_dataset = ChunksDataset(self.data_dir, meta_glob_pattern=self.meta_glob, gene_expr_glob_pattern=self.expr_glob)
@@ -66,7 +70,28 @@ class Trainer():
 
         #Model and Optimizer
         self.model = CAE(input_dim, self.latent_dim, self.field_specs_dict).to(self.device, dtype=torch.float32)
-        self.generator_optimizer = optim.AdamW(self.model.parameters(), lr = self.learning_rate)
+        #######Create Param groups for optimizer
+        base_weight_decay = 1e-4
+        meta_weight_decay = 5e-4
+        base_params = []
+        meta_params = []
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad:
+                continue
+            if "shared_meta_encoders" in name or "shared_meta_decoders" in name or "field_context_head_pool" in name:
+                meta_params.append(param)
+            else:
+                base_params.append(param)
+
+        param_groups =[]
+        if base_params:
+            param_groups.append({"params": base_params, "weight_decay": base_weight_decay})
+        if meta_params:
+            param_groups.append({"params": meta_params, "weight_decay":meta_weight_decay})
+
+        self.generator_optimizer = optim.AdamW(param_groups, lr = self.learning_rate)
+
+
         
         if METADATA_ENABLED:
             self.classifier = ContextClassifier(input_dim, self.classifier_latent_dim, self.field_specs_dict).to(self.device)
@@ -125,7 +150,7 @@ class Trainer():
                 t0_chunk = time.time()
 
                 #Create Datalaoder to prelaod batches from Chunk
-                inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk), field_specs=self.field_specs_dict, field_value_map=self.metadata_fields_vocabs)
+                inner_dataset =  SingleChunkDataset((expr_csr_chunk, meta_chunk),field_specs=self.field_specs_dict, used_fields=self.model.used_fields, field_value_map=self.metadata_fields_vocabs)
                 inner_loader = DataLoader(
                     dataset=inner_dataset,
                     batch_size=self.batch_size,
@@ -154,8 +179,9 @@ class Trainer():
                         if key not in batch_normed_loss_terms: continue
                         norm_v = batch_normed_loss_terms[key]
                         self.chunk_normed_loss_terms[key] += float(norm_v) if torch.is_tensor(norm_v) else float(norm_v)
-                    for field, loss in raw_adv_field_loss.items():
-                        self.chunk_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
+                    if METADATA_ENABLED:
+                        for field, loss in raw_adv_field_loss.items():
+                            self.chunk_raw_adv_field_loss[field] +=float(loss) if torch .is_tensor(loss) else float(loss)
                     #IN SCOPE BATCH
                 #IN SCOPE CHUNK
                 log.per_chunk_raw_loss(self.tbwriter, self.chunks_trained_on, dict(self.chunk_raw_loss_terms))
@@ -235,6 +261,7 @@ class Trainer():
              raw_adv_field_loss_terms = None
              raw_loss_terms = {   
                 "recon": (raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean")),
+                "aggreg":(raw_recon_loss_final := nn.functional.mse_loss(expr_batch, ts_cycle_out["X_st"], reduction="mean"))
              }
 
         normed_loss_terms = self.norm_loss_terms(raw_loss_terms)
