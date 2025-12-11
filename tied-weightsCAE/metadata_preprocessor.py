@@ -1,6 +1,4 @@
-# =========================
-# 1) Imports & Constants
-# =========================
+#AI acknowledgement: This file contains AI generated code used for parsing metadata .pkl's
 from __future__ import annotations
 
 import os
@@ -12,8 +10,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 
-
-# --- Constants you can tweak in the notebook ---
 DATA_DIR: str = "/mnt/projects/debruinz_project/july2024_census_data/full"
 FILE_GLOB_PATTERN: str = "human_metadata_*.pkl"  # e.g., "species_*_*_metadata.pkl"
 
